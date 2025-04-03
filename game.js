@@ -55,7 +55,9 @@ function drawStars() {
   }
 }
 
-let aliensToSpawnOnClear = 3; // You can increase this for more difficulty
+let aliensToSpawnOnClear = 10; // You can increase this for more difficulty
+
+let asteroidsToSpawnOnClear = 6; // Adjust difficulty here
 
 
 const ALIEN_BULLET_SPEED = 2;
@@ -562,6 +564,7 @@ function update() {
     );
   
     setTimeout(() => {
+      // Spawn new aliens
       for (let i = 0; i < aliensToSpawnOnClear; i++) {
         let side = Math.floor(Math.random() * 4);
         let x, y;
@@ -595,9 +598,17 @@ function update() {
         });
       }
   
+      // Spawn new asteroids randomly within canvas
+      for (let i = 0; i < asteroidsToSpawnOnClear; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        asteroids.push(createAsteroid(x, y));
+      }
+  
       gameResetting = false;
     }, 1500);
   }
+  
   
 
   for (let i = explosions.length - 1; i >= 0; i--) {
