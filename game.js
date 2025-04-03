@@ -828,61 +828,38 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  const DODGE_DISTANCE = 120; // start dodging if threats are within this range
-  const DODGE_POWER = THRUST_ACCEL * 1.8;
-
-  // 1. Find nearest threat (alien bullets + asteroids)
-  const threats = [...alienBullets, ...asteroids];
-  let nearestThreat = null;
-  let minThreatDist = Infinity;
-
-  for (const threat of threats) {
-    const dist = distanceBetween(ship.x, ship.y, threat.x, threat.y);
-    if (dist < minThreatDist) {
-      minThreatDist = dist;
-      nearestThreat = threat;
-    }
-  }
-
-  // 2. Dodge if threat is close
-  if (nearestThreat && minThreatDist < DODGE_DISTANCE) {
-    const angleAway = Math.atan2(ship.y - nearestThreat.y, ship.x - nearestThreat.x);
-    ship.angle = angleAway;
-    ship.thrust.x += Math.cos(angleAway) * DODGE_POWER;
-    ship.thrust.y += Math.sin(angleAway) * DODGE_POWER;
-    return; // Don't attack while dodging
-  }
-
-  // 3. Find nearest alien or asteroid to hunt
-  const targets = [...aliens, ...asteroids];
+  // 1) Find nearest alien or asteroid
   let nearestTarget = null;
-  let minTargetDist = Infinity;
+  let minDist = Infinity;
 
-  for (const target of targets) {
+  const potentialTargets = [...aliens, ...asteroids];
+
+  for (const target of potentialTargets) {
     const dist = distanceBetween(ship.x, ship.y, target.x, target.y);
-    if (dist < minTargetDist) {
-      minTargetDist = dist;
+    if (dist < minDist) {
+      minDist = dist;
       nearestTarget = target;
     }
   }
 
   if (nearestTarget) {
-    // 4. Move toward target
+    // 2) Rotate toward target
     const dx = nearestTarget.x - ship.x;
     const dy = nearestTarget.y - ship.y;
     const angleToTarget = Math.atan2(dy, dx);
     ship.angle = angleToTarget;
 
-    if (minTargetDist > 100) {
+    // 3) Move toward target if far
+    const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
+    if (distanceToTarget > 100) {
       ship.thrust.x += Math.cos(angleToTarget) * THRUST_ACCEL * 1.2;
       ship.thrust.y += Math.sin(angleToTarget) * THRUST_ACCEL * 1.2;
     } else {
-      // Close enough — slow down
       ship.thrust.x *= FRICTION;
       ship.thrust.y *= FRICTION;
     }
 
-    // 5. Shoot when ready
+    // 4) Fire when ready
     if (bulletCooldown <= 0) {
       shootBullet();
       bulletCooldown = BULLET_DELAY;
@@ -893,7 +870,6 @@ function smartAutopilot() {
     ship.thrust.y *= FRICTION;
   }
 }
-
 
 function isOnCamera(obj, margin = 0) {
   // Optional margin extends the on-screen zone a bit,
