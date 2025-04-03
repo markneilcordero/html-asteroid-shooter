@@ -76,6 +76,8 @@ asteroidExplosionSound.volume = 0.6; // Tweak to fit
 const laserSound = new Audio("sounds/laser.wav");
 laserSound.volume = 0.5;
 
+const alienLaserSound = new Audio("sounds/alien_laser.wav");
+alienLaserSound.volume = 0.6;
 
 /********************************/
 /*       WORLD ENTITIES         */
@@ -111,12 +113,12 @@ function drawStars() {
   }
 }
 
-let aliensToSpawnOnClear = 100;
-let asteroidsToSpawnOnClear = 100;
+let aliensToSpawnOnClear = 20;
+let asteroidsToSpawnOnClear = 20;
 
 const ALIEN_BULLET_SPEED = 5;
 const ALIEN_FIRE_DELAY = 100;
-const NUM_ALIENS = 100;
+const NUM_ALIENS = 20;
 
 function generateAliens() {
   aliens = [];
@@ -162,7 +164,7 @@ let isFiring = false;
 let autoplay = true;
 
 let bulletCooldown = 0;
-const BULLET_DELAY = 10;
+const BULLET_DELAY = 100;
 
 /********************************/
 /*        SHIP & MOVEMENT       */
@@ -272,7 +274,6 @@ function shootBullet() {
   const numBullets = 4;
 
   // Randomize laser pitch slightly
-  laserSound.playbackRate = 0.95 + Math.random() * 0.1;
   laserSound.currentTime = 0;
   laserSound.play();
 
@@ -442,6 +443,8 @@ function update() {
         life: BULLET_LIFE,
       });
       alien.fireCooldown = ALIEN_FIRE_DELAY;
+      alienLaserSound.currentTime = 0;
+      alienLaserSound.play();
     }
 
     // Draw alien with offset
@@ -723,7 +726,7 @@ function drawShip(x, y, angle) {
 /********************************/
 /*         ASTEROIDS ETC.       */
 /********************************/
-const NUM_ASTEROIDS = 100;
+const NUM_ASTEROIDS = 20;
 const ASTEROID_SIZE = 50;
 const ASTEROID_SPEED = 5;
 let asteroids = [];
