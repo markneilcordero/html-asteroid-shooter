@@ -103,7 +103,7 @@ let asteroidsToSpawnOnClear = 100;
 
 const ALIEN_BULLET_SPEED = 5;
 const ALIEN_FIRE_DELAY = 100;
-const NUM_ALIENS = 10;
+const NUM_ALIENS = 100;
 
 function generateAliens() {
   aliens = [];
@@ -170,7 +170,7 @@ let score = 0;
 let floatingTexts = [];
 let explosions = [];
 
-const BULLET_SPEED = 4;
+const BULLET_SPEED = 5;
 const BULLET_LIFE = 300;
 let bullets = [];
 
@@ -696,7 +696,7 @@ function drawShip(x, y, angle) {
 /********************************/
 /*         ASTEROIDS ETC.       */
 /********************************/
-const NUM_ASTEROIDS = 3;
+const NUM_ASTEROIDS = 100;
 const ASTEROID_SIZE = 50;
 const ASTEROID_SPEED = 5;
 let asteroids = [];
