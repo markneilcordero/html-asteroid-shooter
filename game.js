@@ -13,6 +13,10 @@ explosionImg.src = "images/explosion.png"; // Replace with your actual explosion
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 
+let isFiring = false;
+let bulletCooldown = 0;
+const BULLET_DELAY = 10; // lower = faster fire rate
+
 // ===== Ship Settings =====
 const ship = {
   health: 100, // new
@@ -58,7 +62,7 @@ function keyDown(e) {
       ship.thrusting = true;
       break;
     case " ":
-      shootBullet();
+      isFiring = true;
       break;
   }
 }
@@ -71,6 +75,9 @@ function keyUp(e) {
       break;
     case "ArrowUp":
       ship.thrusting = false;
+      break;
+    case " ":
+      isFiring = false;
       break;
   }
 }
@@ -268,7 +275,7 @@ function update() {
 
     if (distToShip < asteroid.radius + ship.radius) {
       // Collision with ship
-      ship.health -= 20;
+      ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
 
       // Remove asteroid on collision
@@ -317,6 +324,14 @@ function update() {
     }
   }
   ctx.globalAlpha = 1; // reset alpha
+
+  // Auto-fire bullets if holding spacebar
+  if (isFiring && bulletCooldown <= 0) {
+    shootBullet();
+    bulletCooldown = BULLET_DELAY;
+  } else if (bulletCooldown > 0) {
+    bulletCooldown--;
+  }
 
   // Draw Health Bar
   drawHealthBar();
