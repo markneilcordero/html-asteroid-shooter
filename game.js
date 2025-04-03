@@ -1,3 +1,5 @@
+let gameResetting = false;
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -539,15 +541,18 @@ function update() {
     }
   }
 
-  // ===== Reset Game If All Aliens Are Defeated =====
-  if (aliens.length === 0) {
+  if (aliens.length === 0 && !gameResetting) {
+    gameResetting = true;
     createFloatingText(
       "🎉 All Aliens Defeated!",
       canvas.width / 2 - 60,
       canvas.height / 2 - 40,
       "lime"
     );
-
+  
+    // Stop the game loop temporarily
+    cancelAnimationFrame(updateLoop);
+  
     setTimeout(() => {
       // Reset ship
       ship.health = 100;
@@ -556,7 +561,7 @@ function update() {
       ship.angle = 0;
       ship.rotation = 0;
       ship.thrust = { x: 0, y: 0 };
-
+  
       // Reset game state
       score = 0;
       bullets = [];
@@ -565,11 +570,15 @@ function update() {
       explosions = [];
       aliens = [];
       alienBullets = [];
-
+  
       generateAliens();
       generateAsteroids();
-    }, 1500); // Wait a bit before resetting
+  
+      gameResetting = false; // allow future resets
+      update(); // restart game loop
+    }, 1500);
   }
+  
 
   for (let i = explosions.length - 1; i >= 0; i--) {
     const exp = explosions[i];
