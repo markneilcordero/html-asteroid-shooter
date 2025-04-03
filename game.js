@@ -223,6 +223,24 @@ const BULLET_DELAY = 50;
 /********************************/
 /*        SHIP & MOVEMENT       */
 /********************************/
+// At the top, near your "ship" definition:
+const opponent = {
+  health: 100,
+  x: WORLD_WIDTH / 2 + 100, // Just place it near you initially
+  y: WORLD_HEIGHT / 2 - 100,
+  radius: 30,
+  angle: 0,
+  thrust: { x: 0, y: 0 },
+  rotation: 0,
+  fireCooldown: 0, // frames until next shot
+};
+
+const OPPONENT_BULLETS = [];
+const OPPONENT_BULLET_SPEED = 5;
+const OPPONENT_BULLET_LIFE = 500;
+const OPPONENT_FIRE_DELAY = 60; // frames between shots
+
+
 const ship = {
   health: 100,
   x: WORLD_WIDTH / 2,
@@ -429,6 +447,104 @@ function update() {
 
   // 3) Draw stars
   drawStars();
+
+    // ... existing code for player ship, etc.
+  
+    // 1) Opponent AI + Movement
+    opponentAutopilot();
+    
+    // friction & max speed (if you want the same mechanics as player)
+    opponent.thrust.x *= 0.99; // friction
+    opponent.thrust.y *= 0.99;
+    // cap speed
+    const oppSpeed = Math.sqrt(opponent.thrust.x**2 + opponent.thrust.y**2);
+    const OPPONENT_MAX_SPEED = 3;
+    if (oppSpeed > OPPONENT_MAX_SPEED) {
+      opponent.thrust.x *= OPPONENT_MAX_SPEED / oppSpeed;
+      opponent.thrust.y *= OPPONENT_MAX_SPEED / oppSpeed;
+    }
+  
+    opponent.x += opponent.thrust.x;
+    opponent.y += opponent.thrust.y;
+  
+    // Decrease fireCooldown if > 0
+    if (opponent.fireCooldown > 0) {
+      opponent.fireCooldown--;
+    }
+  
+    // 2) Opponent collision with world edges (optional bounce or clamp)
+    // Just an example bounce:
+    if (opponent.x < 0) {
+      opponent.x = 0; 
+      opponent.thrust.x = -opponent.thrust.x * 0.7;
+    }
+    if (opponent.x > WORLD_WIDTH) {
+      opponent.x = WORLD_WIDTH;
+      opponent.thrust.x = -opponent.thrust.x * 0.7;
+    }
+    if (opponent.y < 0) {
+      opponent.y = 0;
+      opponent.thrust.y = -opponent.thrust.y * 0.7;
+    }
+    if (opponent.y > WORLD_HEIGHT) {
+      opponent.y = WORLD_HEIGHT;
+      opponent.thrust.y = -opponent.thrust.y * 0.7;
+    }
+  
+    // 3) Opponent bullet movement & collision
+    for (let i = OPPONENT_BULLETS.length - 1; i >= 0; i--) {
+      const b = OPPONENT_BULLETS[i];
+      b.x += b.dx;
+      b.y += b.dy;
+      b.life--;
+      // remove if out of life or out of bounds
+      if (
+        b.life <= 0 ||
+        b.x < 0 ||
+        b.x > WORLD_WIDTH ||
+        b.y < 0 ||
+        b.y > WORLD_HEIGHT
+      ) {
+        OPPONENT_BULLETS.splice(i, 1);
+        continue;
+      }
+  
+      // Check collision with player's ship
+      if (distanceBetween(b.x, b.y, ship.x, ship.y) < ship.radius) {
+        ship.health -= 10;
+        createFloatingText("-10", ship.x, ship.y, "red");
+        explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
+        shipHitSound.currentTime = 0;
+        shipHitSound.play();
+        OPPONENT_BULLETS.splice(i, 1);
+  
+        if (ship.health <= 0) {
+          ship.health = 100;
+          createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
+        }
+        continue;
+      }
+    }
+  
+    // 4) Draw Opponent
+    drawOpponent();
+  
+    // 5) Draw Opponent bullets
+    for (let i = 0; i < OPPONENT_BULLETS.length; i++) {
+      const b = OPPONENT_BULLETS[i];
+      const sx = b.x - camera.x;
+      const sy = b.y - camera.y;
+      const size = 40;
+  
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(b.dy, b.dx));
+      ctx.drawImage(bulletImg, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    }
+  
+    // ... continue with existing code for UFO, aliens, asteroids, drawing
+  
 
   // --- Update & Draw Civilians (with UFO bullet avoidance) ---
   for (const civilian of civilians) {
@@ -1201,6 +1317,88 @@ function smartAutopilot() {
     }
   }
 }
+
+function opponentAutopilot() {
+  // 1) Dodge player's bullets
+  const DODGE_RADIUS = 250;
+  const DODGE_FORCE = 0.2; // tweak as you like
+  let bulletDodge = { x: 0, y: 0 };
+
+  for (const b of bullets) { // player's bullets
+    const dx = opponent.x - b.x;
+    const dy = opponent.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DODGE_RADIUS) {
+      const awayX = dx / dist;
+      const awayY = dy / dist;
+      bulletDodge.x += awayX * (1 - dist / DODGE_RADIUS);
+      bulletDodge.y += awayY * (1 - dist / DODGE_RADIUS);
+    }
+  }
+
+  // 2) Apply dodge
+  const mag = Math.sqrt(bulletDodge.x ** 2 + bulletDodge.y ** 2);
+  if (mag > 0) {
+    bulletDodge.x = (bulletDodge.x / mag) * DODGE_FORCE;
+    bulletDodge.y = (bulletDodge.y / mag) * DODGE_FORCE;
+    opponent.thrust.x += bulletDodge.x;
+    opponent.thrust.y += bulletDodge.y;
+  }
+
+  // 3) Hunt the player
+  const dx = ship.x - opponent.x;
+  const dy = ship.y - opponent.y;
+  const distToShip = Math.sqrt(dx * dx + dy * dy);
+  const angleToShip = Math.atan2(dy, dx);
+
+  // Face the ship
+  opponent.angle = angleToShip;
+
+  // Thrust if not too close
+  if (distToShip > 150) { // don’t get too close
+    const THRUST_ACCEL = 0.02;
+    opponent.thrust.x += Math.cos(angleToShip) * THRUST_ACCEL;
+    opponent.thrust.y += Math.sin(angleToShip) * THRUST_ACCEL;
+  }
+
+  // 4) Fire at the player if in range
+  if (distToShip < 700) {
+    if (opponent.fireCooldown <= 0) {
+      opponentShoot();
+      opponent.fireCooldown = OPPONENT_FIRE_DELAY;
+    }
+  }
+}
+
+function opponentShoot() {
+  laserSound.currentTime = 0;
+  laserSound.play();
+
+  // bullet starts at the nose of the opponent
+  const startX = opponent.x + Math.cos(opponent.angle) * opponent.radius;
+  const startY = opponent.y + Math.sin(opponent.angle) * opponent.radius;
+
+  OPPONENT_BULLETS.push({
+    x: startX,
+    y: startY,
+    dx: Math.cos(opponent.angle) * OPPONENT_BULLET_SPEED,
+    dy: Math.sin(opponent.angle) * OPPONENT_BULLET_SPEED,
+    life: OPPONENT_BULLET_LIFE,
+  });
+}
+
+function drawOpponent() {
+  const sx = opponent.x - camera.x;
+  const sy = opponent.y - camera.y;
+  const size = opponent.radius * 2;
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(opponent.angle + Math.PI / 2);
+  ctx.drawImage(shipImg, -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
+
 
 function isOnCamera(obj, margin = 50) {
   return (
