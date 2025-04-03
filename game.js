@@ -25,21 +25,44 @@ let alienBullets = [];
 const ALIEN_BULLET_SPEED = 2;
 const ALIEN_FIRE_DELAY = 100; // frames
 
-const NUM_ALIENS = 20;
+const NUM_ALIENS = 10;
 
 function generateAliens() {
-  aliens = [];
-  for (let i = 0; i < NUM_ALIENS; i++) {
-    aliens.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      angle: 0,
-      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-      health: 30, // NEW: give each alien health
-      radius: 20, // NEW: used for collision
-    });
+    aliens = [];
+    for (let i = 0; i < NUM_ALIENS; i++) {
+      let side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+      let x, y;
+  
+      switch (side) {
+        case 0: // top
+          x = Math.random() * canvas.width;
+          y = -40;
+          break;
+        case 1: // right
+          x = canvas.width + 40;
+          y = Math.random() * canvas.height;
+          break;
+        case 2: // bottom
+          x = Math.random() * canvas.width;
+          y = canvas.height + 40;
+          break;
+        case 3: // left
+          x = -40;
+          y = Math.random() * canvas.height;
+          break;
+      }
+  
+      aliens.push({
+        x,
+        y,
+        angle: 0,
+        fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+        health: 30,
+        radius: 20,
+      });
+    }
   }
-}
+  
 
 generateAliens();
 
@@ -145,27 +168,28 @@ canvas.addEventListener("contextmenu", (e) => {
 });
 
 function shootBullet() {
-    const spreadAngle = Math.PI / 12; // Spread between bullets (~15 degrees)
+    const bulletOffset = 10; // spacing between side-by-side bullets
+    const numBullets = 4;
   
-    // Fire 4 bullets: one straight, two slightly angled, one wide
-    const angles = [
-      ship.angle,                          // center
-      ship.angle - spreadAngle,           // left
-      ship.angle + spreadAngle,           // right
-      ship.angle - spreadAngle * 2,       // wide left
-      ship.angle + spreadAngle * 2        // wide right
-    ];
+    for (let i = 0; i < numBullets; i++) {
+      // Spread bullets evenly centered on the ship
+      const offset = (i - (numBullets - 1) / 2) * bulletOffset;
   
-    for (let angle of angles) {
+      // Get perpendicular offset direction
+      const offsetX = Math.cos(ship.angle + Math.PI / 2) * offset;
+      const offsetY = Math.sin(ship.angle + Math.PI / 2) * offset;
+  
+      // Spawn bullet with offset, but move straight forward
       bullets.push({
-        x: ship.x + Math.cos(angle) * ship.radius,
-        y: ship.y + Math.sin(angle) * ship.radius,
-        dx: Math.cos(angle) * BULLET_SPEED,
-        dy: Math.sin(angle) * BULLET_SPEED,
+        x: ship.x + Math.cos(ship.angle) * ship.radius + offsetX,
+        y: ship.y + Math.sin(ship.angle) * ship.radius + offsetY,
+        dx: Math.cos(ship.angle) * BULLET_SPEED,
+        dy: Math.sin(ship.angle) * BULLET_SPEED,
         life: BULLET_LIFE,
       });
     }
   }
+  
   
 
 // ===== Game Loop =====
