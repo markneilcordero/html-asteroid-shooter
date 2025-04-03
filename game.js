@@ -399,14 +399,20 @@ function update() {
   if (autoplay) {
     smartAutopilot();
   } else {
+    // Always perform dodge logic (but skip hunt)
+    smartAutopilot(); // keeps the dodging logic
+  
+    // Allow player-controlled thrust
     if (mouseThrusting) {
       ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
       ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
     } else {
+      // still apply friction even if not thrusting
       ship.thrust.x *= FRICTION;
       ship.thrust.y *= FRICTION;
     }
   }
+  
   capSpeed();
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
