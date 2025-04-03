@@ -64,6 +64,15 @@ alienImg.src = "images/alien.png";
 const alienBulletImg = new Image();
 alienBulletImg.src = "images/alien_bullet.png";
 
+const explosionSound = new Audio("sounds/explosion.wav");
+explosionSound.volume = 0.6;
+
+const shipHitSound = new Audio("sounds/ship_hit.wav");
+shipHitSound.volume = 0.7; // optional
+
+const asteroidExplosionSound = new Audio("sounds/asteroid_explosion.wav");
+asteroidExplosionSound.volume = 0.6; // Tweak to fit
+
 /********************************/
 /*       WORLD ENTITIES         */
 /********************************/
@@ -478,8 +487,10 @@ function update() {
       alienBullets.splice(i, 1);
       createFloatingText("-10", ship.x, ship.y, "red");
 
-      // Explosion effect
       explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
+
+      shipHitSound.currentTime = 0; // reset if already playing
+      shipHitSound.play();
 
       if (ship.health <= 0) {
         ship.health = 100;
@@ -502,6 +513,9 @@ function update() {
         if (alien.health <= 0) {
           explosions.push({ x: alien.x, y: alien.y, size: 40, life: 30 });
           createFloatingText("Alien Down!", alien.x, alien.y - 10, "red");
+          explosionSound.currentTime = 0; // rewind to play again instantly
+          explosionSound.play();
+
           aliens.splice(k, 1);
           score += 150;
         }
@@ -553,6 +567,10 @@ function update() {
           size: asteroid.radius * 1.5,
           life: 30,
         });
+
+        asteroidExplosionSound.currentTime = 0;
+        asteroidExplosionSound.play();
+
         // Split
         if (asteroid.radius > 20) {
           const newRadius = asteroid.radius / 2;
