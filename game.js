@@ -7,6 +7,9 @@ shipImg.src = "images/spaceship.png"; // Replace with your actual image path
 const bulletImg = new Image();
 bulletImg.src = "images/bullet.png"; // Replace with your bullet image path
 
+const explosionImg = new Image();
+explosionImg.src = "images/explosion.png"; // Replace with your actual explosion image path
+
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 
@@ -27,16 +30,17 @@ const ship = {
 
 let score = 0;
 let floatingTexts = [];
+let explosions = []; // Stores active explosion animations
 
 // ===== Bullet Settings =====
-const BULLET_SPEED = 3;
-const BULLET_LIFE = 360; // frames
+const BULLET_SPEED = 4;
+const BULLET_LIFE = 100; // frames
 let bullets = [];
 let updateLoop; // Stores the requestAnimationFrame ID
 
 const TURN_SPEED = Math.PI / 90; // radians per frame (~2°)
 const THRUST_ACCEL = 0.05;
-const FRICTION = 0.100;
+const FRICTION = 0.1;
 
 // ===== Input Handling =====
 document.addEventListener("keydown", keyDown);
@@ -225,6 +229,13 @@ function update() {
         // Remove bullet
         bullets.splice(j, 1);
 
+        explosions.push({
+          x: asteroid.x,
+          y: asteroid.y,
+          size: asteroid.radius * 1.5,
+          life: 30, // duration in frames
+        });
+
         // Split asteroid if it's large enough
         if (asteroid.radius > 20) {
           const newRadius = asteroid.radius / 2;
@@ -285,6 +296,28 @@ function update() {
     generateAsteroids();
   }
 
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const exp = explosions[i];
+    const alpha = exp.life / 30;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(
+      explosionImg,
+      exp.x - exp.size / 2,
+      exp.y - exp.size / 2,
+      exp.size,
+      exp.size
+    );
+    ctx.restore();
+
+    exp.life--;
+    if (exp.life <= 0) {
+      explosions.splice(i, 1);
+    }
+  }
+  ctx.globalAlpha = 1; // reset alpha
+
   // Draw Health Bar
   drawHealthBar();
   drawScore();
@@ -300,7 +333,7 @@ function drawShip(x, y, angle) {
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(angle + Math.PI / 4);
+  ctx.rotate(angle + Math.PI / 2);
   ctx.drawImage(shipImg, -size / 2, -size / 2, size, size);
   ctx.restore();
 }
@@ -413,6 +446,7 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   bullets = [];
   asteroids = [];
   floatingTexts = [];
+  explosions = [];
   generateAsteroids();
 
   // Hide restart button
