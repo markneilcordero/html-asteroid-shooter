@@ -195,8 +195,8 @@ function generateCivilians(num = 10) {
 }
 
 // UFO spawning
-const UFO_FIRE_DELAY = 120;     // frames between UFO shots
-const UFO_BULLET_SPEED = 6;     // how fast the UFO laser travels
+const UFO_FIRE_DELAY = 120; // frames between UFO shots
+const UFO_BULLET_SPEED = 6; // how fast the UFO laser travels
 function spawnUFO() {
   const x = Math.random() * WORLD_WIDTH;
   const y = Math.random() * WORLD_HEIGHT;
@@ -376,7 +376,10 @@ function ufoShoot() {
   }
   // If a civilian is within range, fire a laser bullet at them
   if (nearestCivilian && minDist < 600) {
-    const angle = Math.atan2(nearestCivilian.y - ufo.y, nearestCivilian.x - ufo.x);
+    const angle = Math.atan2(
+      nearestCivilian.y - ufo.y,
+      nearestCivilian.x - ufo.x
+    );
     ufoBullets.push({
       x: ufo.x,
       y: ufo.y,
@@ -401,7 +404,7 @@ function update() {
   } else {
     // Always perform dodge logic (but skip hunt)
     smartAutopilot(); // keeps the dodging logic
-  
+
     // Allow player-controlled thrust
     if (mouseThrusting) {
       ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
@@ -412,7 +415,7 @@ function update() {
       ship.thrust.y *= FRICTION;
     }
   }
-  
+
   capSpeed();
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
@@ -445,10 +448,13 @@ function update() {
   // --- Update & Draw Civilians (with UFO bullet avoidance) ---
   for (const civilian of civilians) {
     // Avoid nearby UFO bullets
-    let avoidanceX = 0, avoidanceY = 0, avoidCount = 0;
+    let avoidanceX = 0,
+      avoidanceY = 0,
+      avoidCount = 0;
     for (const bullet of ufoBullets) {
       const d = distanceBetween(bullet.x, bullet.y, civilian.x, civilian.y);
-      if (d < 150) { // if a UFO bullet is within 150px
+      if (d < 150) {
+        // if a UFO bullet is within 150px
         avoidanceX += (civilian.x - bullet.x) / d;
         avoidanceY += (civilian.y - bullet.y) / d;
         avoidCount++;
@@ -485,7 +491,10 @@ function update() {
       let minDist = Infinity;
       for (const civ of civilians) {
         const d = distanceBetween(ufo.x, ufo.y, civ.x, civ.y);
-        if (d < minDist) { minDist = d; nearest = civ; }
+        if (d < minDist) {
+          minDist = d;
+          nearest = civ;
+        }
       }
       if (nearest) {
         const angle = Math.atan2(nearest.y - ufo.y, nearest.x - ufo.x);
@@ -550,7 +559,12 @@ function update() {
     // Separation from other aliens
     aliens.forEach((otherAlien, j) => {
       if (i !== j) {
-        const dist = distanceBetween(alien.x, alien.y, otherAlien.x, otherAlien.y);
+        const dist = distanceBetween(
+          alien.x,
+          alien.y,
+          otherAlien.x,
+          otherAlien.y
+        );
         if (dist < 40) {
           const pushX = (alien.x - otherAlien.x) / dist;
           const pushY = (alien.y - otherAlien.y) / dist;
@@ -590,7 +604,13 @@ function update() {
     ctx.translate(sx, sy);
     ctx.rotate(alien.angle + Math.PI / 2);
     const alienSize = alien.radius * 2;
-    ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
+    ctx.drawImage(
+      alienImg,
+      -alienSize / 2,
+      -alienSize / 2,
+      alienSize,
+      alienSize
+    );
     ctx.restore();
   });
 
@@ -660,7 +680,13 @@ function update() {
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(ufoLaserImg, -laserSize / 2, -laserSize / 2, laserSize, laserSize);
+    ctx.drawImage(
+      ufoLaserImg,
+      -laserSize / 2,
+      -laserSize / 2,
+      laserSize,
+      laserSize
+    );
     ctx.restore();
     // Check collision with civilians
     for (let j = civilians.length - 1; j >= 0; j--) {
@@ -845,7 +871,12 @@ function update() {
   // --- Alien wave clearing logic ---
   if (aliens.length === 0 && !gameResetting) {
     gameResetting = true;
-    createFloatingText("🎉 All Aliens Defeated!", ship.x - 60, ship.y - 40, "lime");
+    createFloatingText(
+      "🎉 All Aliens Defeated!",
+      ship.x - 60,
+      ship.y - 40,
+      "lime"
+    );
     setTimeout(() => {
       for (let i = 0; i < aliensToSpawnOnClear; i++) {
         let side = Math.floor(Math.random() * 4);
@@ -1043,7 +1074,6 @@ document.addEventListener("DOMContentLoaded", () => {
   btn.textContent = autoplay ? "🔫 Hunt Mode: ON" : "🛑 Hunt Mode: OFF";
 });
 
-
 document.getElementById("restartBtn").addEventListener("click", () => {
   stopGameLoop();
   ship.health = 100;
@@ -1160,8 +1190,6 @@ function smartAutopilot() {
     }
   }
 }
-
-
 
 function isOnCamera(obj, margin = 50) {
   return (
