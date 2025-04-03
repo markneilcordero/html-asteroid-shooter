@@ -1020,6 +1020,24 @@ function drawFloatingTexts() {
   ctx.globalAlpha = 1;
 }
 
+document.getElementById("huntModeBtn").addEventListener("click", () => {
+  autoplay = !autoplay;
+  const btn = document.getElementById("huntModeBtn");
+  btn.textContent = autoplay ? "🔫 Hunt Mode: ON" : "🛑 Hunt Mode: OFF";
+  createFloatingText(
+    autoplay ? "🧠 Autopilot ON (Hunting Aliens)" : "🕹️ Manual Mode",
+    ship.x,
+    ship.y - 50,
+    autoplay ? "lime" : "orange"
+  );
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("huntModeBtn");
+  btn.textContent = autoplay ? "🔫 Hunt Mode: ON" : "🛑 Hunt Mode: OFF";
+});
+
+
 document.getElementById("restartBtn").addEventListener("click", () => {
   stopGameLoop();
   ship.health = 100;
@@ -1054,45 +1072,90 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  let nearestAlien = null;
-  let minAlienDist = Infinity;
-  for (const alien of aliens) {
-    const dist = distanceBetween(ship.x, ship.y, alien.x, alien.y);
-    if (dist < minAlienDist) {
-      minAlienDist = dist;
-      nearestAlien = alien;
+  const DODGE_RADIUS = 250;
+  const DODGE_FORCE = 0.15;
+  const bulletDodgeX = { x: 0, y: 0 };
+  const asteroidDodgeX = { x: 0, y: 0 };
+
+  // === Dodge Enemy Bullets ===
+  const incomingBullets = [...alienBullets, ...ufoBullets];
+  for (const bullet of incomingBullets) {
+    const dx = ship.x - bullet.x;
+    const dy = ship.y - bullet.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < DODGE_RADIUS) {
+      const awayX = dx / dist;
+      const awayY = dy / dist;
+
+      bulletDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
+      bulletDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
     }
   }
-  const DODGE_RADIUS = 200;
-  const DODGE_FORCE = 0.1;
-  let dodgeOffset = 0;
+
+  // === Dodge Asteroids ===
   for (const asteroid of asteroids) {
-    const dx = asteroid.x - ship.x;
-    const dy = asteroid.y - ship.y;
+    const dx = ship.x - asteroid.x;
+    const dy = ship.y - asteroid.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < DODGE_RADIUS) {
-      const angleToAsteroid = Math.atan2(dy, dx);
-      const angleDiff = angleToAsteroid - ship.angle;
-      const wrappedAngle = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-      const dodgePower = (DODGE_RADIUS - dist) / DODGE_RADIUS;
-      dodgeOffset -= Math.sign(wrappedAngle) * DODGE_FORCE * dodgePower;
+      const awayX = dx / dist;
+      const awayY = dy / dist;
+
+      asteroidDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
+      asteroidDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
     }
   }
-  if (nearestAlien) {
-    const dx = nearestAlien.x - ship.x;
-    const dy = nearestAlien.y - ship.y;
-    const angleToAlien = Math.atan2(dy, dx);
-    ship.angle = angleToAlien + dodgeOffset;
+
+  // Combine dodge vectors
+  const totalDodge = {
+    x: bulletDodgeX.x + asteroidDodgeX.x,
+    y: bulletDodgeX.y + asteroidDodgeX.y,
+  };
+
+  // Normalize dodge direction
+  const magnitude = Math.sqrt(totalDodge.x ** 2 + totalDodge.y ** 2);
+  if (magnitude > 0) {
+    const dodgeX = (totalDodge.x / magnitude) * DODGE_FORCE;
+    const dodgeY = (totalDodge.y / magnitude) * DODGE_FORCE;
+
+    ship.thrust.x += dodgeX;
+    ship.thrust.y += dodgeY;
+
+    ship.angle = Math.atan2(dodgeY, dodgeX);
   }
-  ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
-  ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
-  if (nearestAlien && isOnCamera(nearestAlien)) {
-    if (bulletCooldown <= 0) {
-      shootBullet();
-      bulletCooldown = BULLET_DELAY;
+
+  // === Hunt Mode Logic ===
+  if (autoplay) {
+    let nearestAlien = null;
+    let minAlienDist = Infinity;
+    for (const alien of aliens) {
+      const dist = distanceBetween(ship.x, ship.y, alien.x, alien.y);
+      if (dist < minAlienDist) {
+        minAlienDist = dist;
+        nearestAlien = alien;
+      }
+    }
+
+    if (nearestAlien) {
+      const dx = nearestAlien.x - ship.x;
+      const dy = nearestAlien.y - ship.y;
+      const angleToAlien = Math.atan2(dy, dx);
+
+      ship.angle = angleToAlien; // Rotate to alien
+      if (isOnCamera(nearestAlien) && bulletCooldown <= 0) {
+        shootBullet();
+        bulletCooldown = BULLET_DELAY;
+      }
+
+      // Slight thrust toward enemy
+      ship.thrust.x += Math.cos(angleToAlien) * THRUST_ACCEL;
+      ship.thrust.y += Math.sin(angleToAlien) * THRUST_ACCEL;
     }
   }
 }
+
+
 
 function isOnCamera(obj, margin = 50) {
   return (
