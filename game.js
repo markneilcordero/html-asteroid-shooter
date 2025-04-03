@@ -78,7 +78,7 @@ const ship = {
   health: 100, // new
   x: canvas.width / 2,
   y: canvas.height / 2,
-  radius: 15,
+  radius: 20,
   angle: 0, // Facing angle in radians
   rotation: 0, // Rotation speed (rad/frame)
   thrusting: false,
@@ -198,7 +198,7 @@ function update() {
   ship.angle += ship.rotation;
 
   // Always face mouse
-  ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
+  // ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
 
   // Distance to mouse
   const dx = mouse.x - ship.x;
@@ -210,14 +210,12 @@ function update() {
     ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
     ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
   } else {
-    // Apply gentle friction to stop
     ship.thrust.x *= FRICTION;
     ship.thrust.y *= FRICTION;
   }
 
   capSpeed();
 
-  // Update position
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
 
