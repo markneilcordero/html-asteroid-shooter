@@ -956,5 +956,21 @@ function isOnCamera(obj, margin = 50) {
   );
 }
 
-// Start the game
-update();
+document.querySelector("#startOverlay button").addEventListener("click", () => {
+  // Unlock all audio
+  explosionSound.play().catch(() => {});
+  shipHitSound.play().catch(() => {});
+  asteroidExplosionSound.play().catch(() => {});
+  laserSound.play().catch(() => {});
+  alienLaserSound.play().catch(() => {});
+
+  // Immediately pause them (just needed for unlock)
+  explosionSound.pause();
+  shipHitSound.pause();
+  asteroidExplosionSound.pause();
+  laserSound.pause();
+  alienLaserSound.pause();
+
+  document.getElementById("startOverlay").style.display = "none";
+  update(); // Start the game
+});

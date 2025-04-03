@@ -14,14 +14,14 @@
       background-color: black;
     }
 
-    .game-container {
+    /* .game-container {
       position: relative;
       width: 100vw;
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-    }
+    } */
 
     canvas {
       width: 100%;
@@ -51,10 +51,36 @@
         font-size: 16px;
         padding: 10px 20px;
       }
+
+      .game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
     }
   </style>
 </head>
 <body>
+  <div id="startOverlay" style="
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.9);
+  z-index: 999;
+  color: white;
+  font-size: 24px;
+  flex-direction: column;
+  text-align: center;
+">
+  <p>🔊 Click to enable sounds and start the game!</p>
+  <button style="margin-top: 20px; padding: 12px 24px; font-size: 18px;">Start Game</button>
+</div>
+
   <div class="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <button id="restartBtn">Restart Game</button>
