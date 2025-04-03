@@ -91,6 +91,9 @@ let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 
 let isFiring = false;
+
+let autoplay = true; // Toggle autoplay on/off
+
 let bulletCooldown = 0;
 const BULLET_DELAY = 10; // lower = faster fire rate
 
@@ -140,6 +143,11 @@ function keyDown(e) {
       break;
     case " ":
       isFiring = true;
+      break;
+    case "a":
+    case "A":
+      autoplay = !autoplay;
+      console.log("Autoplay:", autoplay);
       break;
   }
 }
@@ -219,19 +227,22 @@ function update() {
   // Always face mouse
   // ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
 
-  // Distance to mouse
-  const dx = mouse.x - ship.x;
-  const dy = mouse.y - ship.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  // Only thrust if far from mouse
-  if (distance > 10) {
-    ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
-    ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
+  if (autoplay) {
+    smartAutopilot();
   } else {
-    ship.thrust.x *= FRICTION;
-    ship.thrust.y *= FRICTION;
+    const dx = mouse.x - ship.x;
+    const dy = mouse.y - ship.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+  
+    if (distance > 10) {
+      ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
+      ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
+    } else {
+      ship.thrust.x *= FRICTION;
+      ship.thrust.y *= FRICTION;
+    }
   }
+  
 
   capSpeed();
 
@@ -744,6 +755,55 @@ function capSpeed() {
     ship.thrust.y *= MAX_SPEED / speed;
   }
 }
+
+function smartAutopilot() {
+  // === Avoid threats (bullets or asteroids) ===
+  let nearestThreat = null;
+  let minThreatDist = Infinity;
+
+  [...alienBullets, ...asteroids].forEach(obj => {
+    const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
+    if (dist < minThreatDist) {
+      minThreatDist = dist;
+      nearestThreat = obj;
+    }
+  });
+
+  // If a threat is nearby, dodge it
+  if (nearestThreat && minThreatDist < 120) {
+    const angleAway = Math.atan2(ship.y - nearestThreat.y, ship.x - nearestThreat.x);
+    ship.angle = angleAway;
+    ship.thrust.x += Math.cos(angleAway) * THRUST_ACCEL * 1.8;
+    ship.thrust.y += Math.sin(angleAway) * THRUST_ACCEL * 1.8;
+  } else {
+    ship.thrust.x *= FRICTION;
+    ship.thrust.y *= FRICTION;
+  }
+
+  // === Aim at nearest enemy and shoot ===
+  let nearestTarget = null;
+  let minTargetDist = Infinity;
+
+  [...aliens, ...asteroids].forEach(obj => {
+    const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
+    if (dist < minTargetDist) {
+      minTargetDist = dist;
+      nearestTarget = obj;
+    }
+  });
+
+  if (nearestTarget) {
+    const dx = nearestTarget.x - ship.x;
+    const dy = nearestTarget.y - ship.y;
+    ship.angle = Math.atan2(dy, dx);
+
+    if (bulletCooldown <= 0) {
+      shootBullet();
+      bulletCooldown = BULLET_DELAY;
+    }
+  }
+}
+
 
 // Start game loop
 update();
