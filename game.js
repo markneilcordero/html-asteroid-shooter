@@ -421,10 +421,25 @@ function update() {
   ship.y += ship.thrust.y;
   // Soft-bounce at world edges
   const bounceDampening = 0.7; // lose 30% speed on bounce
-  if (ship.x < 0) {
-    ship.x = 0;
-    if (ship.thrust.x < 0) ship.thrust.x = -ship.thrust.x * bounceDampening;
+  const buffer = 10; // Keep ship slightly off the edge
+
+  if (ship.x < buffer) {
+    ship.x = buffer;
+    ship.thrust.x = Math.abs(ship.thrust.x) * bounceDampening;
   }
+  if (ship.x > WORLD_WIDTH - buffer) {
+    ship.x = WORLD_WIDTH - buffer;
+    ship.thrust.x = -Math.abs(ship.thrust.x) * bounceDampening;
+  }
+  if (ship.y < buffer) {
+    ship.y = buffer;
+    ship.thrust.y = Math.abs(ship.thrust.y) * bounceDampening;
+  }
+  if (ship.y > WORLD_HEIGHT - buffer) {
+    ship.y = WORLD_HEIGHT - buffer;
+    ship.thrust.y = -Math.abs(ship.thrust.y) * bounceDampening;
+  }
+
   if (ship.x > WORLD_WIDTH) {
     ship.x = WORLD_WIDTH;
     if (ship.thrust.x > 0) ship.thrust.x = -ship.thrust.x * bounceDampening;
