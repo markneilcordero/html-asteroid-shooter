@@ -828,61 +828,46 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  // 1) Find nearest threat among bullets & asteroids ON CAMERA
-  let threatsOnCamera = [...alienBullets, ...asteroids].filter((obj) =>
-    isOnCamera(obj)
-  );
-  let nearestThreat = null;
-  let minThreatDist = Infinity;
-
-  for (const obj of threatsOnCamera) {
-    const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
-    if (dist < minThreatDist) {
-      minThreatDist = dist;
-      nearestThreat = obj;
-    }
-  }
-
-  // If a threat is nearby on camera, dodge it
-  if (nearestThreat && minThreatDist < 120) {
-    const angleAway = Math.atan2(
-      ship.y - nearestThreat.y,
-      ship.x - nearestThreat.x
-    );
-    ship.angle = angleAway;
-    ship.thrust.x += Math.cos(angleAway) * THRUST_ACCEL * 1.8;
-    ship.thrust.y += Math.sin(angleAway) * THRUST_ACCEL * 1.8;
-  } else {
-    ship.thrust.x *= FRICTION;
-    ship.thrust.y *= FRICTION;
-  }
-
-  // 2) Find nearest target among aliens & asteroids ON CAMERA
-  let targetsOnCamera = [...aliens, ...asteroids].filter((obj) =>
-    isOnCamera(obj)
-  );
+  // 1) Find nearest alien or asteroid
   let nearestTarget = null;
-  let minTargetDist = Infinity;
+  let minDist = Infinity;
 
-  for (const obj of targetsOnCamera) {
-    const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
-    if (dist < minTargetDist) {
-      minTargetDist = dist;
-      nearestTarget = obj;
+  const potentialTargets = [...aliens, ...asteroids];
+
+  for (const target of potentialTargets) {
+    const dist = distanceBetween(ship.x, ship.y, target.x, target.y);
+    if (dist < minDist) {
+      minDist = dist;
+      nearestTarget = target;
     }
   }
 
-  // Only shoot if the target is on camera
   if (nearestTarget) {
+    // 2) Rotate toward target
     const dx = nearestTarget.x - ship.x;
     const dy = nearestTarget.y - ship.y;
-    ship.angle = Math.atan2(dy, dx);
+    const angleToTarget = Math.atan2(dy, dx);
+    ship.angle = angleToTarget;
 
-    // Fire bullet if cooldown is ready
+    // 3) Move toward target if far
+    const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
+    if (distanceToTarget > 100) {
+      ship.thrust.x += Math.cos(angleToTarget) * THRUST_ACCEL * 1.2;
+      ship.thrust.y += Math.sin(angleToTarget) * THRUST_ACCEL * 1.2;
+    } else {
+      ship.thrust.x *= FRICTION;
+      ship.thrust.y *= FRICTION;
+    }
+
+    // 4) Fire when ready
     if (bulletCooldown <= 0) {
       shootBullet();
       bulletCooldown = BULLET_DELAY;
     }
+  } else {
+    // No targets — idle/brake
+    ship.thrust.x *= FRICTION;
+    ship.thrust.y *= FRICTION;
   }
 }
 
