@@ -356,7 +356,15 @@ function update() {
       ship.health -= 10;
       alienBullets.splice(i, 1);
       createFloatingText("-10", ship.x, ship.y, "red");
-
+    
+      // Add explosion effect on ship hit
+      explosions.push({
+        x: ship.x,
+        y: ship.y,
+        size: 40,
+        life: 30,
+      });
+    
       if (ship.health <= 0) {
         console.log("💀 Game Over");
         cancelAnimationFrame(updateLoop);
@@ -364,6 +372,7 @@ function update() {
         return;
       }
     }
+    
   }
 
   // Move and draw bullets
@@ -477,22 +486,29 @@ function update() {
     const distToShip = distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y);
 
     if (distToShip < asteroid.radius + ship.radius) {
-      // Collision with ship
       ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
-
-      // Remove asteroid on collision
+    
+      // Add explosion effect on ship hit
+      explosions.push({
+        x: ship.x,
+        y: ship.y,
+        size: 40,
+        life: 30,
+      });
+    
       asteroids.splice(i, 1);
-
+    
       if (ship.health <= 0) {
         console.log("💀 Game Over");
         cancelAnimationFrame(updateLoop);
         document.getElementById("restartBtn").style.display = "block";
         return;
       }
-
-      break; // Prevent multiple asteroid hits in one frame
+    
+      break;
     }
+    
   }
 
   // ===== Respawn Asteroids if None Are Left =====
