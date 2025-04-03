@@ -102,8 +102,7 @@ function drawStars() {
     const sx = star.x - camera.x;
     const sy = star.y - camera.y;
     // Only draw if on screen
-    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10)
-      continue;
+    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10) continue;
 
     ctx.beginPath();
     ctx.arc(sx, sy, star.radius, 0, Math.PI * 2);
@@ -311,7 +310,6 @@ function update() {
 
   // Soft-bounce at world edges
   const bounceDampening = 0.7; // 0.7 => lose 30% speed on bounce
-
   if (ship.x < 0) {
     ship.x = 0;
     if (ship.thrust.x < 0) {
@@ -379,15 +377,10 @@ function update() {
     const dy = ship.y - alien.y;
     alien.angle = Math.atan2(dy, dx);
 
-    // Basic separation
+    // Basic separation from other aliens
     aliens.forEach((otherAlien, j) => {
       if (i !== j) {
-        const dist = distanceBetween(
-          alien.x,
-          alien.y,
-          otherAlien.x,
-          otherAlien.y
-        );
+        const dist = distanceBetween(alien.x, alien.y, otherAlien.x, otherAlien.y);
         if (dist < 40) {
           const pushX = (alien.x - otherAlien.x) / dist;
           const pushY = (alien.y - otherAlien.y) / dist;
@@ -546,10 +539,7 @@ function update() {
     const asteroid = asteroids[i];
     for (let j = bullets.length - 1; j >= 0; j--) {
       const bullet = bullets[j];
-      if (
-        distanceBetween(bullet.x, bullet.y, asteroid.x, asteroid.y) <
-        asteroid.radius
-      ) {
+      if (distanceBetween(bullet.x, bullet.y, asteroid.x, asteroid.y) < asteroid.radius) {
         bullets.splice(j, 1);
         explosions.push({
           x: asteroid.x,
@@ -581,17 +571,14 @@ function update() {
   // --- Asteroid vs. Ship collisions ---
   for (let i = 0; i < asteroids.length; i++) {
     const asteroid = asteroids[i];
-    if (
-      distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y) <
-      asteroid.radius + ship.radius
-    ) {
+    if (distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y) < asteroid.radius + ship.radius) {
       ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
 
       // Ship explosion effect
       explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
-      
-      // COMMENT: ADDED — Make the *asteroid* explode on collision
+
+      // Asteroid explosion effect
       explosions.push({
         x: asteroid.x,
         y: asteroid.y,
@@ -618,15 +605,61 @@ function update() {
     }
   }
 
+  // --- Asteroid vs. Asteroid collisions (ADDED) ---
+  {
+    // We'll gather indices of colliding pairs and remove them after we handle explosions.
+    const collidedAsteroids = new Set();
+
+    // Check each pair i < j
+    for (let i = 0; i < asteroids.length; i++) {
+      for (let j = i + 1; j < asteroids.length; j++) {
+        const a1 = asteroids[i];
+        const a2 = asteroids[j];
+        const dist = distanceBetween(a1.x, a1.y, a2.x, a2.y);
+
+        if (dist < a1.radius + a2.radius) {
+          // Mark both asteroids as collided
+          collidedAsteroids.add(i);
+          collidedAsteroids.add(j);
+        }
+      }
+    }
+
+    // Convert to array in descending order so we can remove them safely
+    const collidedIndicesDesc = Array.from(collidedAsteroids).sort((a, b) => b - a);
+
+    // For each collided asteroid, cause explosion and split if big
+    collidedIndicesDesc.forEach((index) => {
+      if (index >= asteroids.length) return; // Already removed
+
+      const asteroid = asteroids[index];
+
+      // Explosion
+      explosions.push({
+        x: asteroid.x,
+        y: asteroid.y,
+        size: asteroid.radius * 1.5,
+        life: 30,
+      });
+      asteroidExplosionSound.currentTime = 0;
+      asteroidExplosionSound.play();
+
+      // Split if big
+      if (asteroid.radius > 20) {
+        const newRadius = asteroid.radius / 2;
+        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
+        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
+      }
+
+      // Remove the colliding asteroid
+      asteroids.splice(index, 1);
+    });
+  }
+
   // --- Alien wave clearing logic ---
   if (aliens.length === 0 && !gameResetting) {
     gameResetting = true;
-    createFloatingText(
-      "🎉 All Aliens Defeated!",
-      ship.x - 60,
-      ship.y - 40,
-      "lime"
-    );
+    createFloatingText("🎉 All Aliens Defeated!", ship.x - 60, ship.y - 40, "lime");
 
     setTimeout(() => {
       // spawn new aliens
