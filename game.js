@@ -544,6 +544,7 @@ function update() {
     }
   
     // ... continue with existing code for UFO, aliens, asteroids, drawing
+
   
 
   // --- Update & Draw Civilians (with UFO bullet avoidance) ---
@@ -1246,7 +1247,7 @@ function smartAutopilot() {
   const asteroidDodgeX = { x: 0, y: 0 };
 
   // === Dodge Enemy Bullets ===
-  const incomingBullets = [...alienBullets, ...ufoBullets];
+  const incomingBullets = [...alienBullets, ...ufoBullets, ...OPPONENT_BULLETS];
   for (const bullet of incomingBullets) {
     const dx = ship.x - bullet.x;
     const dy = ship.y - bullet.y;
@@ -1288,35 +1289,39 @@ function smartAutopilot() {
     ship.angle = Math.atan2(dodgeY, dodgeX);
   }
 
-  // === Hunt Mode Logic ===
+  // === Hunt Nearest Target (Alien or Opponent) ===
   if (autoplay) {
-    let nearestAlien = null;
-    let minAlienDist = Infinity;
+    let nearestTarget = opponent;
+    let minDist = distanceBetween(ship.x, ship.y, opponent.x, opponent.y);
+
     for (const alien of aliens) {
       const dist = distanceBetween(ship.x, ship.y, alien.x, alien.y);
-      if (dist < minAlienDist) {
-        minAlienDist = dist;
-        nearestAlien = alien;
+      if (dist < minDist) {
+        minDist = dist;
+        nearestTarget = alien;
       }
     }
 
-    if (nearestAlien) {
-      const dx = nearestAlien.x - ship.x;
-      const dy = nearestAlien.y - ship.y;
-      const angleToAlien = Math.atan2(dy, dx);
+    if (nearestTarget) {
+      const dx = nearestTarget.x - ship.x;
+      const dy = nearestTarget.y - ship.y;
+      const angleToTarget = Math.atan2(dy, dx);
 
-      ship.angle = angleToAlien; // Rotate to alien
-      if (isOnCamera(nearestAlien) && bulletCooldown <= 0) {
+      ship.angle = angleToTarget;
+
+      if (isOnCamera(nearestTarget) && bulletCooldown <= 0) {
         shootBullet();
         bulletCooldown = BULLET_DELAY;
       }
 
-      // Slight thrust toward enemy
-      ship.thrust.x += Math.cos(angleToAlien) * THRUST_ACCEL;
-      ship.thrust.y += Math.sin(angleToAlien) * THRUST_ACCEL;
+      if (minDist > 150) {
+        ship.thrust.x += Math.cos(angleToTarget) * THRUST_ACCEL;
+        ship.thrust.y += Math.sin(angleToTarget) * THRUST_ACCEL;
+      }
     }
   }
 }
+
 
 function opponentAutopilot() {
   // 1) Dodge player's bullets
