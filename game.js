@@ -541,7 +541,12 @@ function update() {
     // 1) Separation from other aliens
     aliens.forEach((otherAlien, j) => {
       if (i !== j) {
-        const dist = distanceBetween(alien.x, alien.y, otherAlien.x, otherAlien.y);
+        const dist = distanceBetween(
+          alien.x,
+          alien.y,
+          otherAlien.x,
+          otherAlien.y
+        );
         if (dist < 40) {
           // push them apart
           const pushX = (alien.x - otherAlien.x) / dist;
@@ -553,9 +558,11 @@ function update() {
     });
 
     // 2) Dodge nearby player bullets
-    const DODGE_RADIUS = 250; 
-    const DODGE_FORCE = 0.15;
+    // 2) Dodge nearby player bullets
+    const DODGE_RADIUS = 200;
+    const DODGE_FORCE = 0.6; // Increased for quicker dodge
     let bulletDodge = { x: 0, y: 0 };
+
     for (const b of bullets) {
       const dxB = alien.x - b.x;
       const dyB = alien.y - b.y;
@@ -613,7 +620,13 @@ function update() {
     ctx.translate(sx, sy);
     ctx.rotate(alien.angle + Math.PI / 2);
     const alienSize = alien.radius * 2;
-    ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
+    ctx.drawImage(
+      alienImg,
+      -alienSize / 2,
+      -alienSize / 2,
+      alienSize,
+      alienSize
+    );
     ctx.restore();
   });
 
