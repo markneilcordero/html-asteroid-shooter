@@ -271,7 +271,7 @@ canvas.addEventListener("contextmenu", (e) => {
 /********************************/
 function shootBullet() {
   const bulletOffset = 10;
-  const numBullets = 4;
+  const numBullets = 2;
 
   // Randomize laser pitch slightly
   laserSound.currentTime = 0;
@@ -871,48 +871,50 @@ function smartAutopilot() {
     }
   }
 
-  // --- STEP 2: Strong dodge from nearby asteroids ---
-  const STRONG_DODGE_RADIUS = 150;
-  const STRONG_DODGE_FORCE = 0.5; // increase for stronger push
+  // --- STEP 2: Calculate dodge angle offset from asteroids ---
+  const DODGE_RADIUS = 200;
+  const DODGE_FORCE = 0.1;
+
+  let dodgeOffset = 0;
 
   for (const asteroid of asteroids) {
-    const dx = ship.x - asteroid.x;
-    const dy = ship.y - asteroid.y;
+    const dx = asteroid.x - ship.x;
+    const dy = asteroid.y - ship.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist < STRONG_DODGE_RADIUS) {
-      const dodgePower = (STRONG_DODGE_RADIUS - dist) / STRONG_DODGE_RADIUS;
-      const force = STRONG_DODGE_FORCE * dodgePower;
-      ship.thrust.x += (dx / dist) * force;
-      ship.thrust.y += (dy / dist) * force;
+    if (dist < DODGE_RADIUS) {
+      const angleToAsteroid = Math.atan2(dy, dx);
+      const angleDiff = angleToAsteroid - ship.angle;
+
+      // Normalize angleDiff to [-PI, PI]
+      const wrappedAngle = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+
+      const dodgePower = (DODGE_RADIUS - dist) / DODGE_RADIUS;
+      dodgeOffset -= Math.sign(wrappedAngle) * DODGE_FORCE * dodgePower;
     }
   }
 
-  // --- STEP 3: Engage nearest alien ---
-  if (nearestAlien && isOnCamera(nearestAlien)) {
+  // --- STEP 3: Rotate toward alien (with dodge offset) ---
+  if (nearestAlien) {
     const dx = nearestAlien.x - ship.x;
     const dy = nearestAlien.y - ship.y;
     const angleToAlien = Math.atan2(dy, dx);
-    ship.angle = angleToAlien;
+    ship.angle = angleToAlien + dodgeOffset;
+  }
 
-    const distanceToAlien = Math.sqrt(dx * dx + dy * dy);
-    if (distanceToAlien > 100) {
-      ship.thrust.x += Math.cos(angleToAlien) * THRUST_ACCEL * 1.2;
-      ship.thrust.y += Math.sin(angleToAlien) * THRUST_ACCEL * 1.2;
-    } else {
-      ship.thrust.x *= FRICTION;
-      ship.thrust.y *= FRICTION;
-    }
+  // --- STEP 4: Always move forward in current angle ---
+  ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
+  ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
 
+  // --- STEP 5: Fire if alien is on screen ---
+  if (nearestAlien && isOnCamera(nearestAlien)) {
     if (bulletCooldown <= 0) {
       shootBullet();
       bulletCooldown = BULLET_DELAY;
     }
-  } else {
-    ship.thrust.x *= FRICTION;
-    ship.thrust.y *= FRICTION;
   }
 }
+
 
 function isOnCamera(obj, margin = 50) {
   // Optional margin extends the on-screen zone a bit,
