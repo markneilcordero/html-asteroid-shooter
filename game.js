@@ -411,11 +411,9 @@ function update() {
       });
 
       if (ship.health <= 0) {
-        console.log("💀 Game Over");
-        stopGameLoop();
-        document.getElementById("restartBtn").style.display = "block";
-        return;
-      }
+        ship.health = 100;
+        createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
+      }      
     }
   }
 
@@ -544,11 +542,9 @@ function update() {
       asteroids.splice(i, 1);
 
       if (ship.health <= 0) {
-        console.log("💀 Game Over");
-        cancelAnimationFrame(updateLoop);
-        document.getElementById("restartBtn").style.display = "block";
-        return;
-      }
+        ship.health = 100;
+        createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
+      }      
 
       break;
     }
