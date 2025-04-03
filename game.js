@@ -22,47 +22,68 @@ alienBulletImg.src = "images/alien_bullet.png"; // Replace with your own image p
 let aliens = [];
 let alienBullets = [];
 
+// ===== Stars Settings =====
+const NUM_STARS = 100;
+const stars = [];
+
+for (let i = 0; i < NUM_STARS; i++) {
+  stars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    radius: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.5 + 0.3,
+  });
+}
+
+function drawStars() {
+  for (const star of stars) {
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+    ctx.fill();
+  }
+}
+
 const ALIEN_BULLET_SPEED = 2;
 const ALIEN_FIRE_DELAY = 100; // frames
 
 const NUM_ALIENS = 10;
 
 function generateAliens() {
-    aliens = [];
-    for (let i = 0; i < NUM_ALIENS; i++) {
-      let side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
-      let x, y;
-  
-      switch (side) {
-        case 0: // top
-          x = Math.random() * canvas.width;
-          y = -40;
-          break;
-        case 1: // right
-          x = canvas.width + 40;
-          y = Math.random() * canvas.height;
-          break;
-        case 2: // bottom
-          x = Math.random() * canvas.width;
-          y = canvas.height + 40;
-          break;
-        case 3: // left
-          x = -40;
-          y = Math.random() * canvas.height;
-          break;
-      }
-  
-      aliens.push({
-        x,
-        y,
-        angle: 0,
-        fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-        health: 30,
-        radius: 20,
-      });
+  aliens = [];
+  for (let i = 0; i < NUM_ALIENS; i++) {
+    let side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+    let x, y;
+
+    switch (side) {
+      case 0: // top
+        x = Math.random() * canvas.width;
+        y = -40;
+        break;
+      case 1: // right
+        x = canvas.width + 40;
+        y = Math.random() * canvas.height;
+        break;
+      case 2: // bottom
+        x = Math.random() * canvas.width;
+        y = canvas.height + 40;
+        break;
+      case 3: // left
+        x = -40;
+        y = Math.random() * canvas.height;
+        break;
     }
+
+    aliens.push({
+      x,
+      y,
+      angle: 0,
+      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+      health: 30,
+      radius: 20,
+    });
   }
-  
+}
 
 generateAliens();
 
@@ -94,7 +115,7 @@ let explosions = []; // Stores active explosion animations
 
 // ===== Bullet Settings =====
 const BULLET_SPEED = 4;
-const BULLET_LIFE = 100; // frames
+const BULLET_LIFE = 300; // frames
 let bullets = [];
 let updateLoop; // Stores the requestAnimationFrame ID
 
@@ -168,29 +189,27 @@ canvas.addEventListener("contextmenu", (e) => {
 });
 
 function shootBullet() {
-    const bulletOffset = 10; // spacing between side-by-side bullets
-    const numBullets = 4;
-  
-    for (let i = 0; i < numBullets; i++) {
-      // Spread bullets evenly centered on the ship
-      const offset = (i - (numBullets - 1) / 2) * bulletOffset;
-  
-      // Get perpendicular offset direction
-      const offsetX = Math.cos(ship.angle + Math.PI / 2) * offset;
-      const offsetY = Math.sin(ship.angle + Math.PI / 2) * offset;
-  
-      // Spawn bullet with offset, but move straight forward
-      bullets.push({
-        x: ship.x + Math.cos(ship.angle) * ship.radius + offsetX,
-        y: ship.y + Math.sin(ship.angle) * ship.radius + offsetY,
-        dx: Math.cos(ship.angle) * BULLET_SPEED,
-        dy: Math.sin(ship.angle) * BULLET_SPEED,
-        life: BULLET_LIFE,
-      });
-    }
+  const bulletOffset = 10; // spacing between side-by-side bullets
+  const numBullets = 4;
+
+  for (let i = 0; i < numBullets; i++) {
+    // Spread bullets evenly centered on the ship
+    const offset = (i - (numBullets - 1) / 2) * bulletOffset;
+
+    // Get perpendicular offset direction
+    const offsetX = Math.cos(ship.angle + Math.PI / 2) * offset;
+    const offsetY = Math.sin(ship.angle + Math.PI / 2) * offset;
+
+    // Spawn bullet with offset, but move straight forward
+    bullets.push({
+      x: ship.x + Math.cos(ship.angle) * ship.radius + offsetX,
+      y: ship.y + Math.sin(ship.angle) * ship.radius + offsetY,
+      dx: Math.cos(ship.angle) * BULLET_SPEED,
+      dy: Math.sin(ship.angle) * BULLET_SPEED,
+      life: BULLET_LIFE,
+    });
   }
-  
-  
+}
 
 // ===== Game Loop =====
 function update() {
@@ -228,6 +247,7 @@ function update() {
   // Clear canvas
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawStars(); // ✨ Add stars to the background
 
   // Draw ship
   drawShip(ship.x, ship.y, ship.angle);
@@ -356,7 +376,7 @@ function update() {
       ship.health -= 10;
       alienBullets.splice(i, 1);
       createFloatingText("-10", ship.x, ship.y, "red");
-    
+
       // Add explosion effect on ship hit
       explosions.push({
         x: ship.x,
@@ -364,7 +384,7 @@ function update() {
         size: 40,
         life: 30,
       });
-    
+
       if (ship.health <= 0) {
         console.log("💀 Game Over");
         cancelAnimationFrame(updateLoop);
@@ -372,7 +392,6 @@ function update() {
         return;
       }
     }
-    
   }
 
   // Move and draw bullets
@@ -488,7 +507,7 @@ function update() {
     if (distToShip < asteroid.radius + ship.radius) {
       ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
-    
+
       // Add explosion effect on ship hit
       explosions.push({
         x: ship.x,
@@ -496,19 +515,18 @@ function update() {
         size: 40,
         life: 30,
       });
-    
+
       asteroids.splice(i, 1);
-    
+
       if (ship.health <= 0) {
         console.log("💀 Game Over");
         cancelAnimationFrame(updateLoop);
         document.getElementById("restartBtn").style.display = "block";
         return;
       }
-    
+
       break;
     }
-    
   }
 
   // ===== Respawn Asteroids if None Are Left =====
