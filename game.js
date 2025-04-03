@@ -1,5 +1,14 @@
 let gameResetting = false;
 
+let updateLoop = null;
+
+function stopGameLoop() {
+  if (updateLoop) {
+    cancelAnimationFrame(updateLoop);
+    updateLoop = null;
+  }
+}
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -122,7 +131,6 @@ let explosions = []; // Stores active explosion animations
 const BULLET_SPEED = 4;
 const BULLET_LIFE = 300; // frames
 let bullets = [];
-let updateLoop; // Stores the requestAnimationFrame ID
 
 const TURN_SPEED = Math.PI / 90; // radians per frame (~2°)
 const THRUST_ACCEL = 0.02;
@@ -399,7 +407,7 @@ function update() {
 
       if (ship.health <= 0) {
         console.log("💀 Game Over");
-        cancelAnimationFrame(updateLoop);
+        stopGameLoop();
         document.getElementById("restartBtn").style.display = "block";
         return;
       }
@@ -549,36 +557,43 @@ function update() {
       canvas.height / 2 - 40,
       "lime"
     );
-  
-    // Stop the game loop temporarily
-    cancelAnimationFrame(updateLoop);
-  
+
     setTimeout(() => {
-      // Reset ship
-      ship.health = 100;
-      ship.x = canvas.width / 2;
-      ship.y = canvas.height / 2;
-      ship.angle = 0;
-      ship.rotation = 0;
-      ship.thrust = { x: 0, y: 0 };
-  
-      // Reset game state
-      score = 0;
-      bullets = [];
-      asteroids = [];
-      floatingTexts = [];
-      explosions = [];
-      aliens = [];
-      alienBullets = [];
-  
-      generateAliens();
-      generateAsteroids();
-  
-      gameResetting = false; // allow future resets
-      update(); // restart game loop
+      // Spawn a single new alien off-screen
+      let side = Math.floor(Math.random() * 4);
+      let x, y;
+
+      switch (side) {
+        case 0:
+          x = Math.random() * canvas.width;
+          y = -40;
+          break;
+        case 1:
+          x = canvas.width + 40;
+          y = Math.random() * canvas.height;
+          break;
+        case 2:
+          x = Math.random() * canvas.width;
+          y = canvas.height + 40;
+          break;
+        case 3:
+          x = -40;
+          y = Math.random() * canvas.height;
+          break;
+      }
+
+      aliens.push({
+        x,
+        y,
+        angle: 0,
+        fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+        health: 30,
+        radius: 20,
+      });
+
+      gameResetting = false;
     }, 1500);
   }
-  
 
   for (let i = explosions.length - 1; i >= 0; i--) {
     const exp = explosions[i];
@@ -725,6 +740,8 @@ function drawFloatingTexts() {
 }
 
 document.getElementById("restartBtn").addEventListener("click", () => {
+  stopGameLoop(); // 🛑 Stop any existing game loop
+
   // Reset ship
   ship.health = 100;
   ship.x = canvas.width / 2;
@@ -742,14 +759,12 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   aliens = [];
   alienBullets = [];
   generateAliens();
-
   generateAsteroids();
 
-  // Hide restart button
   document.getElementById("restartBtn").style.display = "none";
 
-  // Restart game loop
-  update();
+  // 🔁 Start a fresh loop
+  updateLoop = requestAnimationFrame(update);
 });
 
 function createAsteroid(x, y, radius = ASTEROID_SIZE) {
