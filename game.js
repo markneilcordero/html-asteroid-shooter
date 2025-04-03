@@ -13,6 +13,31 @@ explosionImg.src = "images/explosion.png"; // Replace with your actual explosion
 const asteroidImg = new Image();
 asteroidImg.src = "images/asteroid.png"; // Replace with your actual asteroid image path
 
+const alienImg = new Image();
+alienImg.src = "images/alien.png"; // Replace with your alien image path
+
+let aliens = [];
+let alienBullets = [];
+
+const ALIEN_BULLET_SPEED = 2;
+const ALIEN_FIRE_DELAY = 100; // frames
+
+function generateAliens() {
+  aliens = [];
+  for (let i = 0; i < 3; i++) {
+    aliens.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      angle: 0,
+      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+      health: 30, // NEW: give each alien health
+      radius: 20, // NEW: used for collision
+    });
+  }
+}
+
+generateAliens();
+
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 
@@ -194,9 +219,121 @@ function update() {
     ctx.restore();
   });
 
+  // ===== Update Aliens =====
+  // ===== Update Aliens =====
+  aliens.forEach((alien) => {
+    const dx = ship.x - alien.x;
+    const dy = ship.y - alien.y;
+    alien.angle = Math.atan2(dy, dx);
+
+    // Move toward ship
+    const speed = 1.2; // Alien movement speed
+    alien.x += Math.cos(alien.angle) * speed;
+    alien.y += Math.sin(alien.angle) * speed;
+
+    // Screen wrap
+    if (alien.x < 0) alien.x = canvas.width;
+    if (alien.x > canvas.width) alien.x = 0;
+    if (alien.y < 0) alien.y = canvas.height;
+    if (alien.y > canvas.height) alien.y = 0;
+
+    // Fire at ship
+    alien.fireCooldown--;
+    if (alien.fireCooldown <= 0) {
+      alienBullets.push({
+        x: alien.x,
+        y: alien.y,
+        dx: Math.cos(alien.angle) * ALIEN_BULLET_SPEED,
+        dy: Math.sin(alien.angle) * ALIEN_BULLET_SPEED,
+        life: BULLET_LIFE,
+      });
+      alien.fireCooldown = ALIEN_FIRE_DELAY;
+    }
+
+    // Draw alien
+    ctx.save();
+    ctx.translate(alien.x, alien.y);
+    ctx.rotate(alien.angle + Math.PI / 2);
+    ctx.drawImage(alienImg, -20, -20, 40, 40);
+    ctx.restore();
+  });
+
+  // ===== Update Alien Bullets =====
+  for (let i = alienBullets.length - 1; i >= 0; i--) {
+    const b = alienBullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    b.life--;
+
+    // Remove if expired or off screen
+    if (
+      b.life <= 0 ||
+      b.x < 0 ||
+      b.x > canvas.width ||
+      b.y < 0 ||
+      b.y > canvas.height
+    ) {
+      alienBullets.splice(i, 1);
+      continue;
+    }
+
+    // Draw
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(Math.atan2(b.dy, b.dx));
+    ctx.drawImage(bulletImg, -5, -5, 10, 10); // reuse bullet image
+    ctx.restore();
+
+    // Check collision with ship
+    const dist = distanceBetween(b.x, b.y, ship.x, ship.y);
+    if (dist < ship.radius) {
+      ship.health -= 10;
+      alienBullets.splice(i, 1);
+      createFloatingText("-10", ship.x, ship.y, "red");
+
+      if (ship.health <= 0) {
+        console.log("💀 Game Over");
+        cancelAnimationFrame(updateLoop);
+        document.getElementById("restartBtn").style.display = "block";
+        return;
+      }
+    }
+  }
+
   // Move and draw bullets
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
+
+    // ===== Bullet vs Alien Collision =====
+    for (let i = aliens.length - 1; i >= 0; i--) {
+      const alien = aliens[i];
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        const bullet = bullets[j];
+        const dist = distanceBetween(bullet.x, bullet.y, alien.x, alien.y);
+
+        if (dist < alien.radius) {
+          bullets.splice(j, 1); // remove bullet
+          alien.health -= 10;
+
+          createFloatingText("-10", alien.x, alien.y, "orange");
+
+          // Alien death
+          if (alien.health <= 0) {
+            explosions.push({
+              x: alien.x,
+              y: alien.y,
+              size: 40,
+              life: 30,
+            });
+            createFloatingText("Alien Down!", alien.x, alien.y - 10, "red");
+            aliens.splice(i, 1); // remove alien
+            score += 150;
+          }
+
+          break; // Exit bullet loop on hit
+        }
+      }
+    }
 
     // Update position
     b.x += b.dx;
@@ -294,6 +431,16 @@ function update() {
 
   // ===== Respawn Asteroids if None Are Left =====
   if (asteroids.length === 0) {
+    if (aliens.length === 0) {
+      createFloatingText(
+        "Alien Wave!",
+        canvas.width / 2 - 40,
+        canvas.height / 2,
+        "violet"
+      );
+      generateAliens();
+    }
+
     createFloatingText(
       "New Wave!",
       canvas.width / 2 - 40,
@@ -462,6 +609,10 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   asteroids = [];
   floatingTexts = [];
   explosions = [];
+  aliens = [];
+  alienBullets = [];
+  generateAliens();
+
   generateAsteroids();
 
   // Hide restart button
@@ -493,7 +644,6 @@ function capSpeed() {
     ship.thrust.y *= MAX_SPEED / speed;
   }
 }
-
 
 // Start game loop
 update();
