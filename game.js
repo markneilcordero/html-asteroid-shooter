@@ -64,6 +64,12 @@ alienImg.src = "images/alien.png";
 const alienBulletImg = new Image();
 alienBulletImg.src = "images/alien_bullet.png";
 
+const civilianImg = new Image();
+civilianImg.src = "images/civilian.png";
+
+const ufoImg = new Image();
+ufoImg.src = "images/ufo.png";
+
 const explosionSound = new Audio("sounds/explosion.wav");
 explosionSound.volume = 0.6;
 
@@ -82,6 +88,9 @@ alienLaserSound.volume = 0.1;
 /********************************/
 /*       WORLD ENTITIES         */
 /********************************/
+let civilians = [];
+let ufo = null;
+
 let aliens = [];
 let alienBullets = [];
 
@@ -102,7 +111,8 @@ function drawStars() {
     const sx = star.x - camera.x;
     const sy = star.y - camera.y;
     // Only draw if on screen
-    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10) continue;
+    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10)
+      continue;
 
     ctx.beginPath();
     ctx.arc(sx, sy, star.radius, 0, Math.PI * 2);
@@ -125,10 +135,22 @@ function generateAliens() {
     let x, y;
 
     switch (side) {
-      case 0: x = Math.random() * WORLD_WIDTH; y = -40; break;
-      case 1: x = WORLD_WIDTH + 40; y = Math.random() * WORLD_HEIGHT; break;
-      case 2: x = Math.random() * WORLD_WIDTH; y = WORLD_HEIGHT + 40; break;
-      case 3: x = -40; y = Math.random() * WORLD_HEIGHT; break;
+      case 0:
+        x = Math.random() * WORLD_WIDTH;
+        y = -40;
+        break;
+      case 1:
+        x = WORLD_WIDTH + 40;
+        y = Math.random() * WORLD_HEIGHT;
+        break;
+      case 2:
+        x = Math.random() * WORLD_WIDTH;
+        y = WORLD_HEIGHT + 40;
+        break;
+      case 3:
+        x = -40;
+        y = Math.random() * WORLD_HEIGHT;
+        break;
     }
 
     const alienSize = 30; // 🔧 Change this value to adjust alien size
@@ -145,6 +167,73 @@ function generateAliens() {
 }
 
 generateAliens();
+
+/**
+ * Expand the random positions of civilians to be anywhere in the world
+ * (instead of 0..100). This ensures they're not all stuck in one corner.
+ */
+function generateCivilians(num = 10) {
+  civilians = [];
+  for (let i = 0; i < num; i++) {
+    civilians.push({
+      x: Math.random() * WORLD_WIDTH,
+      y: Math.random() * WORLD_HEIGHT,
+      dx: (Math.random() - 0.5) * 1.5,
+      dy: (Math.random() - 0.5) * 1.5,
+      radius: 20,
+      wanderTimer: Math.floor(Math.random() * 120 + 60),
+    });
+  }
+}
+
+
+/* 
+// ALTERNATIVE: Spawn Civilians NEAR the Ship
+function generateCivilians(num = 10) {
+  civilians = [];
+  const spawnRadius = 500; // how far from ship
+  for (let i = 0; i < num; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const dist = Math.random() * spawnRadius;
+    civilians.push({
+      x: ship.x + Math.cos(angle) * dist,
+      y: ship.y + Math.sin(angle) * dist,
+      radius: 20,
+    });
+  }
+}
+*/
+
+function spawnUFO() {
+  // Use WORLD_WIDTH/HEIGHT so the UFO is also somewhere in the entire world
+  const x = Math.random() * WORLD_WIDTH;
+  const y = Math.random() * WORLD_HEIGHT;
+  ufo = {
+    x,
+    y,
+    dx: (Math.random() - 0.5) * 2,
+    dy: (Math.random() - 0.5) * 2,
+    radius: 40,
+  };
+}
+
+/* 
+// ALTERNATIVE: Spawn UFO NEAR the Ship
+function spawnUFO() {
+  const spawnRadius = 500;
+  const angle = Math.random() * 2 * Math.PI;
+  const dist = Math.random() * spawnRadius;
+  const x = ship.x + Math.cos(angle) * dist;
+  const y = ship.y + Math.sin(angle) * dist;
+  ufo = {
+    x,
+    y,
+    dx: (Math.random() - 0.5) * 2,
+    dy: (Math.random() - 0.5) * 2,
+    radius: 40,
+  };
+}
+*/
 
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
@@ -335,6 +424,56 @@ function update() {
 
   // 3) Draw
   drawStars();
+  // Draw civilians
+  for (const civilian of civilians) {
+    civilian.x += civilian.dx;
+    civilian.y += civilian.dy;
+  
+    civilian.wanderTimer--;
+    if (civilian.wanderTimer <= 0) {
+      civilian.dx = (Math.random() - 0.5) * 1.5;
+      civilian.dy = (Math.random() - 0.5) * 1.5;
+      civilian.wanderTimer = Math.floor(Math.random() * 120 + 60);
+    }
+  
+    // Clamp to world
+    if (civilian.x < 0 || civilian.x > WORLD_WIDTH) civilian.dx *= -1;
+    if (civilian.y < 0 || civilian.y > WORLD_HEIGHT) civilian.dy *= -1;
+  
+    const sx = civilian.x - camera.x;
+    const sy = civilian.y - camera.y;
+  
+    if (isOnCamera(civilian)) {
+      ctx.drawImage(civilianImg, sx - 20, sy - 20, 40, 40);
+    }
+  }
+  
+
+  // Draw and move UFO
+  if (ufo) {
+    ufo.x += ufo.dx;
+    ufo.y += ufo.dy;
+  
+    // NPC wander logic
+    ufo.wanderTimer--;
+    if (ufo.wanderTimer <= 0) {
+      ufo.dx = (Math.random() - 0.5) * 2;
+      ufo.dy = (Math.random() - 0.5) * 2;
+      ufo.wanderTimer = 100 + Math.random() * 100;
+    }
+  
+    // Bounce at edges
+    if (ufo.x < 0 || ufo.x > WORLD_WIDTH) ufo.dx *= -1;
+    if (ufo.y < 0 || ufo.y > WORLD_HEIGHT) ufo.dy *= -1;
+  
+    const sx = ufo.x - camera.x;
+    const sy = ufo.y - camera.y;
+    if (isOnCamera(ufo)) {
+      ctx.drawImage(ufoImg, sx - 40, sy - 40, 80, 80);
+    }
+  }
+  
+
   drawShip(ship.x, ship.y, ship.angle);
 
   // --- Move and draw asteroids ---
@@ -417,7 +556,7 @@ function update() {
     ctx.translate(sx, sy);
     ctx.rotate(alien.angle + Math.PI / 2);
     const alienSize = alien.radius * 2;
-ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
+    ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
     ctx.restore();
   });
 
@@ -531,7 +670,10 @@ ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
     const asteroid = asteroids[i];
     for (let j = bullets.length - 1; j >= 0; j--) {
       const bullet = bullets[j];
-      if (distanceBetween(bullet.x, bullet.y, asteroid.x, asteroid.y) < asteroid.radius) {
+      if (
+        distanceBetween(bullet.x, bullet.y, asteroid.x, asteroid.y) <
+        asteroid.radius
+      ) {
         bullets.splice(j, 1);
         explosions.push({
           x: asteroid.x,
@@ -563,7 +705,10 @@ ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
   // --- Asteroid vs. Ship collisions ---
   for (let i = 0; i < asteroids.length; i++) {
     const asteroid = asteroids[i];
-    if (distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y) < asteroid.radius + ship.radius) {
+    if (
+      distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y) <
+      asteroid.radius + ship.radius
+    ) {
       ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
 
@@ -618,7 +763,9 @@ ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
     }
 
     // Convert to array in descending order so we can remove them safely
-    const collidedIndicesDesc = Array.from(collidedAsteroids).sort((a, b) => b - a);
+    const collidedIndicesDesc = Array.from(collidedAsteroids).sort(
+      (a, b) => b - a
+    );
 
     // For each collided asteroid, cause explosion and split if big
     collidedIndicesDesc.forEach((index) => {
@@ -651,7 +798,12 @@ ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
   // --- Alien wave clearing logic ---
   if (aliens.length === 0 && !gameResetting) {
     gameResetting = true;
-    createFloatingText("🎉 All Aliens Defeated!", ship.x - 60, ship.y - 40, "lime");
+    createFloatingText(
+      "🎉 All Aliens Defeated!",
+      ship.x - 60,
+      ship.y - 40,
+      "lime"
+    );
 
     setTimeout(() => {
       // spawn new aliens
@@ -729,6 +881,20 @@ ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
   drawHealthBar();
   drawScore();
   drawFloatingTexts();
+
+  function spawnUFO() {
+    const x = Math.random() * WORLD_WIDTH;
+    const y = Math.random() * WORLD_HEIGHT;
+    ufo = {
+      x,
+      y,
+      dx: (Math.random() - 0.5) * 2,
+      dy: (Math.random() - 0.5) * 2,
+      radius: 40,
+      wanderTimer: 100, // Frames until direction change
+    };
+  }
+  
 
   // Loop
   updateLoop = requestAnimationFrame(update);
@@ -870,6 +1036,8 @@ document.getElementById("restartBtn").addEventListener("click", () => {
 
   generateAliens();
   generateAsteroids();
+  generateCivilians();
+  spawnUFO();
 
   document.getElementById("restartBtn").style.display = "none";
 
@@ -955,6 +1123,8 @@ document.querySelector("#startOverlay button").addEventListener("click", () => {
   asteroidExplosionSound.play().catch(() => {});
   laserSound.play().catch(() => {});
   alienLaserSound.play().catch(() => {});
+  generateCivilians();
+  spawnUFO();
 
   // Immediately pause them (just needed for unlock)
   explosionSound.pause();
