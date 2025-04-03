@@ -10,6 +10,9 @@ bulletImg.src = "images/bullet.png"; // Replace with your bullet image path
 const explosionImg = new Image();
 explosionImg.src = "images/explosion.png"; // Replace with your actual explosion image path
 
+const asteroidImg = new Image();
+asteroidImg.src = "images/asteroid.png"; // Replace with your actual asteroid image path
+
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 
@@ -43,8 +46,8 @@ let bullets = [];
 let updateLoop; // Stores the requestAnimationFrame ID
 
 const TURN_SPEED = Math.PI / 90; // radians per frame (~2°)
-const THRUST_ACCEL = 0.05;
-const FRICTION = 0.1;
+const THRUST_ACCEL = 0.02;
+const FRICTION = 0.99;
 
 // ===== Input Handling =====
 document.addEventListener("keydown", keyDown);
@@ -144,6 +147,8 @@ function update() {
     ship.thrust.y *= FRICTION;
   }
 
+  capSpeed();
+
   // Update position
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
@@ -176,22 +181,17 @@ function update() {
     if (asteroid.y < 0) asteroid.y = canvas.height;
     if (asteroid.y > canvas.height) asteroid.y = 0;
 
-    // Draw jagged shape
-    const points = asteroid.offset.length;
-    ctx.beginPath();
-    for (let i = 0; i < points; i++) {
-      const angle = ((Math.PI * 2) / points) * i;
-      const r = asteroid.radius * asteroid.offset[i];
-      const px = asteroid.x + r * Math.cos(angle);
-      const py = asteroid.y + r * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
-    }
-    ctx.closePath();
-    ctx.stroke();
+    // Update rotation
+    asteroid.currentRotation += asteroid.rotation;
+
+    // Draw asteroid image
+    ctx.save();
+    ctx.translate(asteroid.x, asteroid.y);
+    ctx.rotate(asteroid.currentRotation);
+    asteroid.currentRotation += asteroid.rotation; // update rotation
+    const size = asteroid.radius * 2;
+    ctx.drawImage(asteroidImg, -size / 2, -size / 2, size, size);
+    ctx.restore();
   });
 
   // Move and draw bullets
@@ -470,6 +470,30 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   // Restart game loop
   update();
 });
+
+function createAsteroid(x, y, radius = ASTEROID_SIZE) {
+  const angle = Math.random() * Math.PI * 2;
+  return {
+    x,
+    y,
+    radius,
+    angle,
+    speed: Math.random() * ASTEROID_SPEED + 0.5,
+    rotation: Math.random() * 0.02 - 0.01, // optional: slow rotation
+    currentRotation: 0, // optional
+  };
+}
+
+const MAX_SPEED = 3;
+
+function capSpeed() {
+  const speed = Math.sqrt(ship.thrust.x ** 2 + ship.thrust.y ** 2);
+  if (speed > MAX_SPEED) {
+    ship.thrust.x *= MAX_SPEED / speed;
+    ship.thrust.y *= MAX_SPEED / speed;
+  }
+}
+
 
 // Start game loop
 update();
