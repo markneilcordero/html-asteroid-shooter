@@ -145,14 +145,28 @@ canvas.addEventListener("contextmenu", (e) => {
 });
 
 function shootBullet() {
-  bullets.push({
-    x: ship.x + Math.cos(ship.angle) * ship.radius,
-    y: ship.y + Math.sin(ship.angle) * ship.radius,
-    dx: Math.cos(ship.angle) * BULLET_SPEED,
-    dy: Math.sin(ship.angle) * BULLET_SPEED,
-    life: BULLET_LIFE,
-  });
-}
+    const spreadAngle = Math.PI / 12; // Spread between bullets (~15 degrees)
+  
+    // Fire 4 bullets: one straight, two slightly angled, one wide
+    const angles = [
+      ship.angle,                          // center
+      ship.angle - spreadAngle,           // left
+      ship.angle + spreadAngle,           // right
+      ship.angle - spreadAngle * 2,       // wide left
+      ship.angle + spreadAngle * 2        // wide right
+    ];
+  
+    for (let angle of angles) {
+      bullets.push({
+        x: ship.x + Math.cos(angle) * ship.radius,
+        y: ship.y + Math.sin(angle) * ship.radius,
+        dx: Math.cos(angle) * BULLET_SPEED,
+        dy: Math.sin(angle) * BULLET_SPEED,
+        life: BULLET_LIFE,
+      });
+    }
+  }
+  
 
 // ===== Game Loop =====
 function update() {
