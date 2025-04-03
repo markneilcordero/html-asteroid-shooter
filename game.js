@@ -212,27 +212,6 @@ function spawnUFO() {
   };
 }
 
-/* 
-// ALTERNATIVE: Spawn UFO NEAR the Ship
-function spawnUFO() {
-  const spawnRadius = 500;
-  const angle = Math.random() * 2 * Math.PI;
-  const dist = Math.random() * spawnRadius;
-  const x = ship.x + Math.cos(angle) * dist;
-  const y = ship.y + Math.sin(angle) * dist;
-  ufo = {
-    x,
-    y,
-    dx: (Math.random() - 0.5) * 2,
-    dy: (Math.random() - 0.5) * 2,
-    radius: 40,
-    health: 50,
-    wanderTimer: 100,
-    fireCooldown: UFO_FIRE_DELAY,
-  };
-}
-*/
-
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
 let isFiring = false;
@@ -419,6 +398,7 @@ function update() {
   capSpeed();
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
+
   // Soft-bounce at world edges
   const bounceDampening = 0.7; // lose 30% speed on bounce
   const buffer = 10; // Keep ship slightly off the edge
@@ -440,23 +420,13 @@ function update() {
     ship.thrust.y = -Math.abs(ship.thrust.y) * bounceDampening;
   }
 
-  if (ship.x > WORLD_WIDTH) {
-    ship.x = WORLD_WIDTH;
-    if (ship.thrust.x > 0) ship.thrust.x = -ship.thrust.x * bounceDampening;
-  }
-  if (ship.y < 0) {
-    ship.y = 0;
-    if (ship.thrust.y < 0) ship.thrust.y = -ship.thrust.y * bounceDampening;
-  }
-  if (ship.y > WORLD_HEIGHT) {
-    ship.y = WORLD_HEIGHT;
-    if (ship.thrust.y > 0) ship.thrust.y = -ship.thrust.y * bounceDampening;
-  }
   // Update camera to follow ship
   updateCamera();
+
   // 2) Clear the canvas (the visible region)
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // 3) Draw stars
   drawStars();
 
@@ -566,21 +536,14 @@ function update() {
     ctx.restore();
   });
 
-  // --- Update & Draw Aliens ---
+  // --- Update & Draw Aliens (with bullet avoidance) ---
   aliens.forEach((alien, i) => {
-    const dx = ship.x - alien.x;
-    const dy = ship.y - alien.y;
-    alien.angle = Math.atan2(dy, dx);
-    // Separation from other aliens
+    // 1) Separation from other aliens
     aliens.forEach((otherAlien, j) => {
       if (i !== j) {
-        const dist = distanceBetween(
-          alien.x,
-          alien.y,
-          otherAlien.x,
-          otherAlien.y
-        );
+        const dist = distanceBetween(alien.x, alien.y, otherAlien.x, otherAlien.y);
         if (dist < 40) {
+          // push them apart
           const pushX = (alien.x - otherAlien.x) / dist;
           const pushY = (alien.y - otherAlien.y) / dist;
           alien.x += pushX;
@@ -588,6 +551,32 @@ function update() {
         }
       }
     });
+
+    // 2) Dodge nearby player bullets
+    const DODGE_RADIUS = 250; 
+    const DODGE_FORCE = 0.15;
+    let bulletDodge = { x: 0, y: 0 };
+    for (const b of bullets) {
+      const dxB = alien.x - b.x;
+      const dyB = alien.y - b.y;
+      const distB = Math.sqrt(dxB * dxB + dyB * dyB);
+      if (distB < DODGE_RADIUS) {
+        // push away from bullet
+        const awayX = dxB / distB;
+        const awayY = dyB / distB;
+        // Weighted by how close the bullet is
+        bulletDodge.x += awayX * (1 - distB / DODGE_RADIUS);
+        bulletDodge.y += awayY * (1 - distB / DODGE_RADIUS);
+      }
+    }
+    // Apply the dodge offset
+    alien.x += bulletDodge.x * DODGE_FORCE;
+    alien.y += bulletDodge.y * DODGE_FORCE;
+
+    // 3) Move toward the ship if not too close
+    const dx = ship.x - alien.x;
+    const dy = ship.y - alien.y;
+    alien.angle = Math.atan2(dy, dx);
     const distToShip = Math.sqrt(dx * dx + dy * dy);
     const stopDistance = 120;
     if (distToShip > stopDistance) {
@@ -595,11 +584,14 @@ function update() {
       alien.x += Math.cos(alien.angle) * speed;
       alien.y += Math.sin(alien.angle) * speed;
     }
+
+    // Wrap-around or bounce at edges if you prefer:
     if (alien.x < 0) alien.x = WORLD_WIDTH;
     if (alien.x > WORLD_WIDTH) alien.x = 0;
     if (alien.y < 0) alien.y = WORLD_HEIGHT;
     if (alien.y > WORLD_HEIGHT) alien.y = 0;
-    // Alien firing logic
+
+    // 4) Alien firing logic
     alien.fireCooldown--;
     if (alien.fireCooldown <= 0 && isOnCamera(alien)) {
       alienBullets.push({
@@ -613,19 +605,15 @@ function update() {
       alienLaserSound.currentTime = 0;
       alienLaserSound.play();
     }
+
+    // 5) Draw the alien
     const sx = alien.x - camera.x;
     const sy = alien.y - camera.y;
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(alien.angle + Math.PI / 2);
     const alienSize = alien.radius * 2;
-    ctx.drawImage(
-      alienImg,
-      -alienSize / 2,
-      -alienSize / 2,
-      alienSize,
-      alienSize
-    );
+    ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
     ctx.restore();
   });
 
@@ -1134,11 +1122,9 @@ function smartAutopilot() {
     const dx = ship.x - bullet.x;
     const dy = ship.y - bullet.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-
     if (dist < DODGE_RADIUS) {
       const awayX = dx / dist;
       const awayY = dy / dist;
-
       bulletDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
       bulletDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
     }
@@ -1152,7 +1138,6 @@ function smartAutopilot() {
     if (dist < DODGE_RADIUS) {
       const awayX = dx / dist;
       const awayY = dy / dist;
-
       asteroidDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
       asteroidDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
     }
@@ -1169,10 +1154,8 @@ function smartAutopilot() {
   if (magnitude > 0) {
     const dodgeX = (totalDodge.x / magnitude) * DODGE_FORCE;
     const dodgeY = (totalDodge.y / magnitude) * DODGE_FORCE;
-
     ship.thrust.x += dodgeX;
     ship.thrust.y += dodgeY;
-
     ship.angle = Math.atan2(dodgeY, dodgeX);
   }
 
@@ -1216,18 +1199,21 @@ function isOnCamera(obj, margin = 50) {
 }
 
 document.querySelector("#startOverlay button").addEventListener("click", () => {
+  // Attempt to unlock sounds by playing them once
   explosionSound.play().catch(() => {});
   shipHitSound.play().catch(() => {});
   asteroidExplosionSound.play().catch(() => {});
   laserSound.play().catch(() => {});
   alienLaserSound.play().catch(() => {});
   ufoLaserSound.play().catch(() => {});
+  // Then pause them so they won't loop
   explosionSound.pause();
   shipHitSound.pause();
   asteroidExplosionSound.pause();
   laserSound.pause();
   alienLaserSound.pause();
   ufoLaserSound.pause();
+
   generateCivilians();
   spawnUFO();
   document.getElementById("startOverlay").style.display = "none";
