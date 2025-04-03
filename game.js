@@ -115,7 +115,7 @@ let aliensToSpawnOnClear = 5;
 let asteroidsToSpawnOnClear = 50;
 
 const ALIEN_BULLET_SPEED = 5;
-const ALIEN_FIRE_DELAY = 100;
+const ALIEN_FIRE_DELAY = 50;
 const NUM_ALIENS = 5;
 
 function generateAliens() {
@@ -125,23 +125,13 @@ function generateAliens() {
     let x, y;
 
     switch (side) {
-      case 0: // top
-        x = Math.random() * WORLD_WIDTH;
-        y = -40;
-        break;
-      case 1: // right
-        x = WORLD_WIDTH + 40;
-        y = Math.random() * WORLD_HEIGHT;
-        break;
-      case 2: // bottom
-        x = Math.random() * WORLD_WIDTH;
-        y = WORLD_HEIGHT + 40;
-        break;
-      case 3: // left
-        x = -40;
-        y = Math.random() * WORLD_HEIGHT;
-        break;
+      case 0: x = Math.random() * WORLD_WIDTH; y = -40; break;
+      case 1: x = WORLD_WIDTH + 40; y = Math.random() * WORLD_HEIGHT; break;
+      case 2: x = Math.random() * WORLD_WIDTH; y = WORLD_HEIGHT + 40; break;
+      case 3: x = -40; y = Math.random() * WORLD_HEIGHT; break;
     }
+
+    const alienSize = 30; // 🔧 Change this value to adjust alien size
 
     aliens.push({
       x,
@@ -149,10 +139,11 @@ function generateAliens() {
       angle: 0,
       fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
       health: 30,
-      radius: 20,
+      radius: alienSize,
     });
   }
 }
+
 generateAliens();
 
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -161,7 +152,7 @@ let isFiring = false;
 let autoplay = true;
 
 let bulletCooldown = 0;
-const BULLET_DELAY = 100;
+const BULLET_DELAY = 50;
 
 /********************************/
 /*        SHIP & MOVEMENT       */
@@ -170,7 +161,7 @@ const ship = {
   health: 100,
   x: WORLD_WIDTH / 2,
   y: WORLD_HEIGHT / 2,
-  radius: 20,
+  radius: 30,
   angle: 0,
   rotation: 0,
   thrusting: false,
@@ -425,7 +416,8 @@ function update() {
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(alien.angle + Math.PI / 2);
-    ctx.drawImage(alienImg, -20, -20, 40, 40);
+    const alienSize = alien.radius * 2;
+ctx.drawImage(alienImg, -alienSize / 2, -alienSize / 2, alienSize, alienSize);
     ctx.restore();
   });
 
