@@ -221,22 +221,27 @@ function update() {
 
   // ===== Update Aliens =====
   // ===== Update Aliens =====
-  aliens.forEach((alien) => {
+aliens.forEach((alien) => {
     const dx = ship.x - alien.x;
     const dy = ship.y - alien.y;
     alien.angle = Math.atan2(dy, dx);
-
-    // Move toward ship
-    const speed = 1.2; // Alien movement speed
-    alien.x += Math.cos(alien.angle) * speed;
-    alien.y += Math.sin(alien.angle) * speed;
-
-    // Screen wrap
-    if (alien.x < 0) alien.x = canvas.width;
-    if (alien.x > canvas.width) alien.x = 0;
-    if (alien.y < 0) alien.y = canvas.height;
-    if (alien.y > canvas.height) alien.y = 0;
-
+  
+    // Only move toward ship if beyond a safe distance
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const stopDistance = 120; // How far they stay away
+  
+    if (dist > stopDistance) {
+      const speed = 1.2;
+      alien.x += Math.cos(alien.angle) * speed;
+      alien.y += Math.sin(alien.angle) * speed;
+  
+      // Wrap around screen
+      if (alien.x < 0) alien.x = canvas.width;
+      if (alien.x > canvas.width) alien.x = 0;
+      if (alien.y < 0) alien.y = canvas.height;
+      if (alien.y > canvas.height) alien.y = 0;
+    }
+  
     // Fire at ship
     alien.fireCooldown--;
     if (alien.fireCooldown <= 0) {
@@ -249,7 +254,7 @@ function update() {
       });
       alien.fireCooldown = ALIEN_FIRE_DELAY;
     }
-
+  
     // Draw alien
     ctx.save();
     ctx.translate(alien.x, alien.y);
@@ -257,6 +262,7 @@ function update() {
     ctx.drawImage(alienImg, -20, -20, 40, 40);
     ctx.restore();
   });
+  
 
   // ===== Update Alien Bullets =====
   for (let i = alienBullets.length - 1; i >= 0; i--) {
