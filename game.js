@@ -101,7 +101,7 @@ function drawStars() {
 let aliensToSpawnOnClear = 100;
 let asteroidsToSpawnOnClear = 100;
 
-const ALIEN_BULLET_SPEED = 3;
+const ALIEN_BULLET_SPEED = 5;
 const ALIEN_FIRE_DELAY = 100;
 const NUM_ALIENS = 10;
 
@@ -458,10 +458,18 @@ function update() {
     // Draw with offset
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
+    const alienBulletSize = 20; // 🔧 customize the bullet size here
+
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(alienBulletImg, -6, -6, 12, 12);
+    ctx.drawImage(
+      alienBulletImg,
+      -alienBulletSize / 2,
+      -alienBulletSize / 2,
+      alienBulletSize,
+      alienBulletSize
+    );
     ctx.restore();
 
     // Check collision with ship
@@ -521,10 +529,10 @@ function update() {
     // Draw bullet with offset
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
-    const size = 10;
+    const size = 20;
     ctx.save();
     ctx.translate(sx, sy);
-    ctx.rotate(Math.atan2(b.dy, b.dx) + Math.PI / 4);
+    ctx.rotate(Math.atan2(b.dy, b.dx) + Math.PI / 1);
     ctx.drawImage(bulletImg, -size / 2, -size / 2, size, size);
     ctx.restore();
   }
