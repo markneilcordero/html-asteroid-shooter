@@ -71,7 +71,7 @@ let aliens = [];
 let alienBullets = [];
 
 // **** CAMERA CHANGES: Generate stars across the WORLD instead of the canvas
-const NUM_STARS = 200;
+const NUM_STARS = 1000;
 const stars = [];
 for (let i = 0; i < NUM_STARS; i++) {
   stars.push({
@@ -97,10 +97,10 @@ function drawStars() {
   }
 }
 
-let aliensToSpawnOnClear = 10;
-let asteroidsToSpawnOnClear = 6;
+let aliensToSpawnOnClear = 100;
+let asteroidsToSpawnOnClear = 100;
 
-const ALIEN_BULLET_SPEED = 2;
+const ALIEN_BULLET_SPEED = 3;
 const ALIEN_FIRE_DELAY = 100;
 const NUM_ALIENS = 10;
 
@@ -622,7 +622,7 @@ function drawShip(x, y, angle) {
 /********************************/
 const NUM_ASTEROIDS = 3;
 const ASTEROID_SIZE = 50; 
-const ASTEROID_SPEED = 1.5;
+const ASTEROID_SPEED = 5;
 let asteroids = [];
 
 function createAsteroid(x, y, radius = ASTEROID_SIZE) {
@@ -752,19 +752,20 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  // ... same logic as before ...
-  // (no changes except removing screen-based wrap – we’re in 4000x4000)
+  // 1) Find nearest threat among bullets & asteroids ON CAMERA
+  let threatsOnCamera = [...alienBullets, ...asteroids].filter(obj => isOnCamera(obj));
   let nearestThreat = null;
   let minThreatDist = Infinity;
 
-  [...alienBullets, ...asteroids].forEach((obj) => {
+  for (const obj of threatsOnCamera) {
     const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
     if (dist < minThreatDist) {
       minThreatDist = dist;
       nearestThreat = obj;
     }
-  });
+  }
 
+  // If a threat is nearby on camera, dodge it
   if (nearestThreat && minThreatDist < 120) {
     const angleAway = Math.atan2(ship.y - nearestThreat.y, ship.x - nearestThreat.x);
     ship.angle = angleAway;
@@ -775,27 +776,45 @@ function smartAutopilot() {
     ship.thrust.y *= FRICTION;
   }
 
+  // 2) Find nearest target among aliens & asteroids ON CAMERA
+  let targetsOnCamera = [...aliens, ...asteroids].filter(obj => isOnCamera(obj));
   let nearestTarget = null;
   let minTargetDist = Infinity;
-  [...aliens, ...asteroids].forEach((obj) => {
+
+  for (const obj of targetsOnCamera) {
     const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
     if (dist < minTargetDist) {
       minTargetDist = dist;
       nearestTarget = obj;
     }
-  });
+  }
 
+  // Only shoot if the target is on camera
   if (nearestTarget) {
     const dx = nearestTarget.x - ship.x;
     const dy = nearestTarget.y - ship.y;
     ship.angle = Math.atan2(dy, dx);
 
+    // Fire bullet if cooldown is ready
     if (bulletCooldown <= 0) {
       shootBullet();
       bulletCooldown = BULLET_DELAY;
     }
   }
 }
+
+
+function isOnCamera(obj, margin = 0) {
+  // Optional margin extends the on-screen zone a bit,
+  // so it can shoot just before objects fully enter the view
+  return (
+    obj.x >= camera.x - margin &&
+    obj.x <= camera.x + camera.w + margin &&
+    obj.y >= camera.y - margin &&
+    obj.y <= camera.y + camera.h + margin
+  );
+}
+
 
 // Start the game
 update();
