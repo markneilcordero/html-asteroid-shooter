@@ -16,15 +16,20 @@ asteroidImg.src = "images/asteroid.png"; // Replace with your actual asteroid im
 const alienImg = new Image();
 alienImg.src = "images/alien.png"; // Replace with your alien image path
 
+const alienBulletImg = new Image();
+alienBulletImg.src = "images/alien_bullet.png"; // Replace with your own image path
+
 let aliens = [];
 let alienBullets = [];
 
 const ALIEN_BULLET_SPEED = 2;
 const ALIEN_FIRE_DELAY = 100; // frames
 
+const NUM_ALIENS = 20;
+
 function generateAliens() {
   aliens = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < NUM_ALIENS; i++) {
     aliens.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
@@ -220,28 +225,47 @@ function update() {
   });
 
   // ===== Update Aliens =====
-  // ===== Update Aliens =====
-aliens.forEach((alien) => {
+  aliens.forEach((alien, i) => {
     const dx = ship.x - alien.x;
     const dy = ship.y - alien.y;
     alien.angle = Math.atan2(dy, dx);
-  
-    // Only move toward ship if beyond a safe distance
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const stopDistance = 120; // How far they stay away
-  
-    if (dist > stopDistance) {
+
+    // Separation: Push away from nearby aliens
+    aliens.forEach((otherAlien, j) => {
+      if (i !== j) {
+        const dist = distanceBetween(
+          alien.x,
+          alien.y,
+          otherAlien.x,
+          otherAlien.y
+        );
+        if (dist < 40) {
+          // Adjust this distance as needed
+          // Push away
+          const pushX = (alien.x - otherAlien.x) / dist;
+          const pushY = (alien.y - otherAlien.y) / dist;
+          alien.x += pushX;
+          alien.y += pushY;
+        }
+      }
+    });
+
+    // Only move toward ship if far enough
+    const distToShip = Math.sqrt(dx * dx + dy * dy);
+    const stopDistance = 120;
+
+    if (distToShip > stopDistance) {
       const speed = 1.2;
       alien.x += Math.cos(alien.angle) * speed;
       alien.y += Math.sin(alien.angle) * speed;
-  
-      // Wrap around screen
-      if (alien.x < 0) alien.x = canvas.width;
-      if (alien.x > canvas.width) alien.x = 0;
-      if (alien.y < 0) alien.y = canvas.height;
-      if (alien.y > canvas.height) alien.y = 0;
     }
-  
+
+    // Screen wrap
+    if (alien.x < 0) alien.x = canvas.width;
+    if (alien.x > canvas.width) alien.x = 0;
+    if (alien.y < 0) alien.y = canvas.height;
+    if (alien.y > canvas.height) alien.y = 0;
+
     // Fire at ship
     alien.fireCooldown--;
     if (alien.fireCooldown <= 0) {
@@ -254,7 +278,7 @@ aliens.forEach((alien) => {
       });
       alien.fireCooldown = ALIEN_FIRE_DELAY;
     }
-  
+
     // Draw alien
     ctx.save();
     ctx.translate(alien.x, alien.y);
@@ -262,7 +286,6 @@ aliens.forEach((alien) => {
     ctx.drawImage(alienImg, -20, -20, 40, 40);
     ctx.restore();
   });
-  
 
   // ===== Update Alien Bullets =====
   for (let i = alienBullets.length - 1; i >= 0; i--) {
@@ -284,10 +307,11 @@ aliens.forEach((alien) => {
     }
 
     // Draw
+    // Draw alien bullet
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(bulletImg, -5, -5, 10, 10); // reuse bullet image
+    ctx.drawImage(alienBulletImg, -6, -6, 12, 12); // slightly larger bullet
     ctx.restore();
 
     // Check collision with ship
@@ -507,7 +531,7 @@ function drawShip(x, y, angle) {
 }
 
 // ===== Asteroid Settings =====
-const NUM_ASTEROIDS = 5;
+const NUM_ASTEROIDS = 3;
 const ASTEROID_SIZE = 50; // average radius
 const ASTEROID_SPEED = 1.5;
 let asteroids = [];
