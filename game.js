@@ -85,7 +85,6 @@ alienLaserSound.volume = 0.1;
 let aliens = [];
 let alienBullets = [];
 
-// **** CAMERA CHANGES: Generate stars across the WORLD instead of the canvas
 const NUM_STARS = 1000;
 const stars = [];
 for (let i = 0; i < NUM_STARS; i++) {
@@ -126,7 +125,6 @@ function generateAliens() {
     let side = Math.floor(Math.random() * 4);
     let x, y;
 
-    // **** CAMERA CHANGES: spawn in WORLD space
     switch (side) {
       case 0: // top
         x = Math.random() * WORLD_WIDTH;
@@ -171,7 +169,6 @@ const BULLET_DELAY = 100;
 /********************************/
 const ship = {
   health: 100,
-  // **** CAMERA CHANGES: start in middle of WORLD
   x: WORLD_WIDTH / 2,
   y: WORLD_HEIGHT / 2,
   radius: 20,
@@ -237,14 +234,11 @@ function keyUp(e) {
   }
 }
 
-// **** CAMERA CHANGES:
-// Mouse coordinates are still screen-based (0..canvas.width/height).
-// We must convert them to "world space" if we want the ship to face them.
+// Mouse coordinates are still screen-based. We convert them to world coords.
 canvas.addEventListener("mousemove", (e) => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
-  // Convert screen coords -> world coords
   mouse.x = camera.x + sx;
   mouse.y = camera.y + sy;
 
@@ -273,7 +267,6 @@ function shootBullet() {
   const bulletOffset = 10;
   const numBullets = 2;
 
-  // Randomize laser pitch slightly
   laserSound.currentTime = 0;
   laserSound.play();
 
@@ -321,7 +314,6 @@ function update() {
 
   if (ship.x < 0) {
     ship.x = 0;
-    // If velocity points outward, flip + reduce it
     if (ship.thrust.x < 0) {
       ship.thrust.x = -ship.thrust.x * bounceDampening;
     }
@@ -344,19 +336,6 @@ function update() {
       ship.thrust.y = -ship.thrust.y * bounceDampening;
     }
   }
-  // Apply a small nudge if thrust gets too close to zero
-  if (Math.abs(ship.thrust.x) < 0.001) {
-    ship.thrust.x += (Math.random() - 0.5) * 0.02;
-  }
-  if (Math.abs(ship.thrust.y) < 0.001) {
-    ship.thrust.y += (Math.random() - 0.5) * 0.02;
-  }
-
-  // **** CAMERA CHANGES: clamp ship to the world edges instead of screen wrap
-  if (ship.x < 0) ship.x = 0;
-  if (ship.x > WORLD_WIDTH) ship.x = WORLD_WIDTH;
-  if (ship.y < 0) ship.y = 0;
-  if (ship.y > WORLD_HEIGHT) ship.y = WORLD_HEIGHT;
 
   // Update camera to follow ship
   updateCamera();
@@ -432,7 +411,6 @@ function update() {
     if (alien.y < 0) alien.y = WORLD_HEIGHT;
     if (alien.y > WORLD_HEIGHT) alien.y = 0;
 
-    // Fire at ship
     // Fire at ship only if alien is on camera
     alien.fireCooldown--;
     if (alien.fireCooldown <= 0 && isOnCamera(alien)) {
@@ -480,7 +458,7 @@ function update() {
     // Draw with offset
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
-    const alienBulletSize = 20; // 🔧 customize the bullet size here
+    const alienBulletSize = 20;
 
     ctx.save();
     ctx.translate(sx, sy);
@@ -501,8 +479,7 @@ function update() {
       createFloatingText("-10", ship.x, ship.y, "red");
 
       explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
-
-      shipHitSound.currentTime = 0; // reset if already playing
+      shipHitSound.currentTime = 0;
       shipHitSound.play();
 
       if (ship.health <= 0) {
@@ -516,7 +493,7 @@ function update() {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
 
-    // Bullet vs. Alien collision
+    // Bullet vs Alien collision
     for (let k = aliens.length - 1; k >= 0; k--) {
       const alien = aliens[k];
       if (distanceBetween(b.x, b.y, alien.x, alien.y) < alien.radius) {
@@ -526,7 +503,7 @@ function update() {
         if (alien.health <= 0) {
           explosions.push({ x: alien.x, y: alien.y, size: 40, life: 30 });
           createFloatingText("Alien Down!", alien.x, alien.y - 10, "red");
-          explosionSound.currentTime = 0; // rewind to play again instantly
+          explosionSound.currentTime = 0;
           explosionSound.play();
 
           aliens.splice(k, 1);
@@ -584,7 +561,7 @@ function update() {
         asteroidExplosionSound.currentTime = 0;
         asteroidExplosionSound.play();
 
-        // Split
+        // Split if big
         if (asteroid.radius > 20) {
           const newRadius = asteroid.radius / 2;
           asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
@@ -601,7 +578,7 @@ function update() {
     }
   }
 
-  // --- Asteroid vs Ship collisions ---
+  // --- Asteroid vs. Ship collisions ---
   for (let i = 0; i < asteroids.length; i++) {
     const asteroid = asteroids[i];
     if (
@@ -610,8 +587,29 @@ function update() {
     ) {
       ship.health -= 5;
       console.log(`💥 Ship Hit! Health: ${ship.health}`);
+
+      // Ship explosion effect
       explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
+      
+      // COMMENT: ADDED — Make the *asteroid* explode on collision
+      explosions.push({
+        x: asteroid.x,
+        y: asteroid.y,
+        size: asteroid.radius * 1.5,
+        life: 30,
+      });
+      asteroidExplosionSound.currentTime = 0;
+      asteroidExplosionSound.play();
+
+      // Split if big
+      if (asteroid.radius > 20) {
+        const newRadius = asteroid.radius / 2;
+        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
+        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
+      }
+      // Remove the colliding asteroid
       asteroids.splice(i, 1);
+
       if (ship.health <= 0) {
         ship.health = 100;
         createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
@@ -695,7 +693,7 @@ function update() {
   }
   ctx.globalAlpha = 1; // reset alpha
 
-  // --- Auto-fire if holding space ---
+  // Auto-fire if holding space
   if (isFiring && bulletCooldown <= 0) {
     shootBullet();
     bulletCooldown = BULLET_DELAY;
@@ -712,7 +710,6 @@ function update() {
 }
 
 function drawShip(x, y, angle) {
-  // Draw at (ship.x - camera.x, ship.y - camera.y)
   const sx = x - camera.x;
   const sy = y - camera.y;
   const size = ship.radius * 2;
@@ -728,18 +725,24 @@ function drawShip(x, y, angle) {
 /*         ASTEROIDS ETC.       */
 /********************************/
 const NUM_ASTEROIDS = 50;
-const ASTEROID_SIZE = 50;
-const ASTEROID_SPEED = 5;
+function getRandomAsteroidSize() {
+  return Math.random() * 30 + 20; // Random size between 20 and 50
+}
+
+function getRandomAsteroidSpeed() {
+  return Math.random() * 3 + 1; // Random speed between 1 and 4
+}
+
 let asteroids = [];
 
-function createAsteroid(x, y, radius = ASTEROID_SIZE) {
+function createAsteroid(x, y, radius = getRandomAsteroidSize()) {
   const angle = Math.random() * Math.PI * 2;
   return {
     x,
     y,
     radius,
     angle,
-    speed: Math.random() * ASTEROID_SPEED + 0.5,
+    speed: getRandomAsteroidSpeed(),
     rotation: Math.random() * 0.02 - 0.01,
     currentRotation: 0,
   };
@@ -800,11 +803,9 @@ function createFloatingText(text, x, y, color = "white") {
 function drawFloatingTexts() {
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     const ft = floatingTexts[i];
-    // Convert to camera offset
     const sx = ft.x - camera.x;
     const sy = ft.y - camera.y;
 
-    // If it’s on screen, draw it
     if (sx >= 0 && sy >= 0 && sx < camera.w && sy < camera.h) {
       ctx.globalAlpha = ft.alpha;
       ctx.fillStyle = ft.color;
@@ -859,7 +860,7 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  // --- STEP 1: Hunt nearest alien only ---
+  // 1: Hunt nearest alien
   let nearestAlien = null;
   let minAlienDist = Infinity;
 
@@ -871,7 +872,7 @@ function smartAutopilot() {
     }
   }
 
-  // --- STEP 2: Calculate dodge angle offset from asteroids ---
+  // 2: Calculate dodge angle offset from asteroids
   const DODGE_RADIUS = 200;
   const DODGE_FORCE = 0.1;
 
@@ -885,8 +886,6 @@ function smartAutopilot() {
     if (dist < DODGE_RADIUS) {
       const angleToAsteroid = Math.atan2(dy, dx);
       const angleDiff = angleToAsteroid - ship.angle;
-
-      // Normalize angleDiff to [-PI, PI]
       const wrappedAngle = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
 
       const dodgePower = (DODGE_RADIUS - dist) / DODGE_RADIUS;
@@ -894,7 +893,7 @@ function smartAutopilot() {
     }
   }
 
-  // --- STEP 3: Rotate toward alien (with dodge offset) ---
+  // 3: Rotate toward alien (with dodge offset)
   if (nearestAlien) {
     const dx = nearestAlien.x - ship.x;
     const dy = nearestAlien.y - ship.y;
@@ -902,11 +901,11 @@ function smartAutopilot() {
     ship.angle = angleToAlien + dodgeOffset;
   }
 
-  // --- STEP 4: Always move forward in current angle ---
+  // 4: Always move forward in current angle
   ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
   ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
 
-  // --- STEP 5: Fire if alien is on screen ---
+  // 5: Fire if alien is on screen
   if (nearestAlien && isOnCamera(nearestAlien)) {
     if (bulletCooldown <= 0) {
       shootBullet();
@@ -915,10 +914,7 @@ function smartAutopilot() {
   }
 }
 
-
 function isOnCamera(obj, margin = 50) {
-  // Optional margin extends the on-screen zone a bit,
-  // so it can shoot just before objects fully enter the view
   return (
     obj.x >= camera.x - margin &&
     obj.x <= camera.x + camera.w + margin &&
