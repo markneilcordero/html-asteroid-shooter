@@ -73,6 +73,10 @@ shipHitSound.volume = 0.7; // optional
 const asteroidExplosionSound = new Audio("sounds/asteroid_explosion.wav");
 asteroidExplosionSound.volume = 0.6; // Tweak to fit
 
+const laserSound = new Audio("sounds/laser.wav");
+laserSound.volume = 0.5;
+
+
 /********************************/
 /*       WORLD ENTITIES         */
 /********************************/
@@ -266,6 +270,11 @@ canvas.addEventListener("contextmenu", (e) => {
 function shootBullet() {
   const bulletOffset = 10;
   const numBullets = 4;
+
+  // Randomize laser pitch slightly
+  laserSound.playbackRate = 0.95 + Math.random() * 0.1;
+  laserSound.currentTime = 0;
+  laserSound.play();
 
   for (let i = 0; i < numBullets; i++) {
     const offset = (i - (numBullets - 1) / 2) * bulletOffset;
