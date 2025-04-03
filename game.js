@@ -233,7 +233,7 @@ function update() {
     const dx = mouse.x - ship.x;
     const dy = mouse.y - ship.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-  
+
     if (distance > 10) {
       ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
       ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
@@ -242,7 +242,6 @@ function update() {
       ship.thrust.y *= FRICTION;
     }
   }
-  
 
   capSpeed();
 
@@ -540,25 +539,36 @@ function update() {
     }
   }
 
-  // ===== Respawn Asteroids if None Are Left =====
-  if (asteroids.length === 0) {
-    if (aliens.length === 0) {
-      createFloatingText(
-        "Alien Wave!",
-        canvas.width / 2 - 40,
-        canvas.height / 2,
-        "violet"
-      );
-      generateAliens();
-    }
-
+  // ===== Reset Game If All Aliens Are Defeated =====
+  if (aliens.length === 0) {
     createFloatingText(
-      "New Wave!",
-      canvas.width / 2 - 40,
-      canvas.height / 2,
-      "yellow"
+      "🎉 All Aliens Defeated!",
+      canvas.width / 2 - 60,
+      canvas.height / 2 - 40,
+      "lime"
     );
-    generateAsteroids();
+
+    setTimeout(() => {
+      // Reset ship
+      ship.health = 100;
+      ship.x = canvas.width / 2;
+      ship.y = canvas.height / 2;
+      ship.angle = 0;
+      ship.rotation = 0;
+      ship.thrust = { x: 0, y: 0 };
+
+      // Reset game state
+      score = 0;
+      bullets = [];
+      asteroids = [];
+      floatingTexts = [];
+      explosions = [];
+      aliens = [];
+      alienBullets = [];
+
+      generateAliens();
+      generateAsteroids();
+    }, 1500); // Wait a bit before resetting
   }
 
   for (let i = explosions.length - 1; i >= 0; i--) {
@@ -761,7 +771,7 @@ function smartAutopilot() {
   let nearestThreat = null;
   let minThreatDist = Infinity;
 
-  [...alienBullets, ...asteroids].forEach(obj => {
+  [...alienBullets, ...asteroids].forEach((obj) => {
     const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
     if (dist < minThreatDist) {
       minThreatDist = dist;
@@ -771,7 +781,10 @@ function smartAutopilot() {
 
   // If a threat is nearby, dodge it
   if (nearestThreat && minThreatDist < 120) {
-    const angleAway = Math.atan2(ship.y - nearestThreat.y, ship.x - nearestThreat.x);
+    const angleAway = Math.atan2(
+      ship.y - nearestThreat.y,
+      ship.x - nearestThreat.x
+    );
     ship.angle = angleAway;
     ship.thrust.x += Math.cos(angleAway) * THRUST_ACCEL * 1.8;
     ship.thrust.y += Math.sin(angleAway) * THRUST_ACCEL * 1.8;
@@ -784,7 +797,7 @@ function smartAutopilot() {
   let nearestTarget = null;
   let minTargetDist = Infinity;
 
-  [...aliens, ...asteroids].forEach(obj => {
+  [...aliens, ...asteroids].forEach((obj) => {
     const dist = distanceBetween(ship.x, ship.y, obj.x, obj.y);
     if (dist < minTargetDist) {
       minTargetDist = dist;
@@ -803,7 +816,6 @@ function smartAutopilot() {
     }
   }
 }
-
 
 // Start game loop
 update();
