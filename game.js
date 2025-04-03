@@ -74,10 +74,10 @@ const asteroidExplosionSound = new Audio("sounds/asteroid_explosion.wav");
 asteroidExplosionSound.volume = 0.6; // Tweak to fit
 
 const laserSound = new Audio("sounds/laser.wav");
-laserSound.volume = 0.5;
+laserSound.volume = 0.1;
 
 const alienLaserSound = new Audio("sounds/alien_laser.wav");
-alienLaserSound.volume = 0.6;
+alienLaserSound.volume = 0.1;
 
 /********************************/
 /*       WORLD ENTITIES         */
@@ -113,12 +113,12 @@ function drawStars() {
   }
 }
 
-let aliensToSpawnOnClear = 20;
-let asteroidsToSpawnOnClear = 20;
+let aliensToSpawnOnClear = 5;
+let asteroidsToSpawnOnClear = 50;
 
 const ALIEN_BULLET_SPEED = 5;
 const ALIEN_FIRE_DELAY = 100;
-const NUM_ALIENS = 20;
+const NUM_ALIENS = 5;
 
 function generateAliens() {
   aliens = [];
@@ -186,7 +186,7 @@ let floatingTexts = [];
 let explosions = [];
 
 const BULLET_SPEED = 5;
-const BULLET_LIFE = 300;
+const BULLET_LIFE = 500;
 let bullets = [];
 
 const TURN_SPEED = Math.PI / 90;
@@ -433,8 +433,9 @@ function update() {
     if (alien.y > WORLD_HEIGHT) alien.y = 0;
 
     // Fire at ship
+    // Fire at ship only if alien is on camera
     alien.fireCooldown--;
-    if (alien.fireCooldown <= 0) {
+    if (alien.fireCooldown <= 0 && isOnCamera(alien)) {
       alienBullets.push({
         x: alien.x,
         y: alien.y,
@@ -726,7 +727,7 @@ function drawShip(x, y, angle) {
 /********************************/
 /*         ASTEROIDS ETC.       */
 /********************************/
-const NUM_ASTEROIDS = 20;
+const NUM_ASTEROIDS = 50;
 const ASTEROID_SIZE = 50;
 const ASTEROID_SPEED = 5;
 let asteroids = [];
@@ -858,50 +859,62 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  // 1) Find nearest alien or asteroid
-  let nearestTarget = null;
-  let minDist = Infinity;
+  // --- STEP 1: Hunt nearest alien only ---
+  let nearestAlien = null;
+  let minAlienDist = Infinity;
 
-  const potentialTargets = [...aliens, ...asteroids];
-
-  for (const target of potentialTargets) {
-    const dist = distanceBetween(ship.x, ship.y, target.x, target.y);
-    if (dist < minDist) {
-      minDist = dist;
-      nearestTarget = target;
+  for (const alien of aliens) {
+    const dist = distanceBetween(ship.x, ship.y, alien.x, alien.y);
+    if (dist < minAlienDist) {
+      minAlienDist = dist;
+      nearestAlien = alien;
     }
   }
 
-  if (nearestTarget) {
-    // 2) Rotate toward target
-    const dx = nearestTarget.x - ship.x;
-    const dy = nearestTarget.y - ship.y;
-    const angleToTarget = Math.atan2(dy, dx);
-    ship.angle = angleToTarget;
+  // --- STEP 2: Strong dodge from nearby asteroids ---
+  const STRONG_DODGE_RADIUS = 150;
+  const STRONG_DODGE_FORCE = 0.5; // increase for stronger push
 
-    // 3) Move toward target if far
-    const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
-    if (distanceToTarget > 100) {
-      ship.thrust.x += Math.cos(angleToTarget) * THRUST_ACCEL * 1.2;
-      ship.thrust.y += Math.sin(angleToTarget) * THRUST_ACCEL * 1.2;
+  for (const asteroid of asteroids) {
+    const dx = ship.x - asteroid.x;
+    const dy = ship.y - asteroid.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < STRONG_DODGE_RADIUS) {
+      const dodgePower = (STRONG_DODGE_RADIUS - dist) / STRONG_DODGE_RADIUS;
+      const force = STRONG_DODGE_FORCE * dodgePower;
+      ship.thrust.x += (dx / dist) * force;
+      ship.thrust.y += (dy / dist) * force;
+    }
+  }
+
+  // --- STEP 3: Engage nearest alien ---
+  if (nearestAlien && isOnCamera(nearestAlien)) {
+    const dx = nearestAlien.x - ship.x;
+    const dy = nearestAlien.y - ship.y;
+    const angleToAlien = Math.atan2(dy, dx);
+    ship.angle = angleToAlien;
+
+    const distanceToAlien = Math.sqrt(dx * dx + dy * dy);
+    if (distanceToAlien > 100) {
+      ship.thrust.x += Math.cos(angleToAlien) * THRUST_ACCEL * 1.2;
+      ship.thrust.y += Math.sin(angleToAlien) * THRUST_ACCEL * 1.2;
     } else {
       ship.thrust.x *= FRICTION;
       ship.thrust.y *= FRICTION;
     }
 
-    // 4) Fire when ready
     if (bulletCooldown <= 0) {
       shootBullet();
       bulletCooldown = BULLET_DELAY;
     }
   } else {
-    // No targets — idle/brake
     ship.thrust.x *= FRICTION;
     ship.thrust.y *= FRICTION;
   }
 }
 
-function isOnCamera(obj, margin = 0) {
+function isOnCamera(obj, margin = 50) {
   // Optional margin extends the on-screen zone a bit,
   // so it can shoot just before objects fully enter the view
   return (
