@@ -55,6 +55,9 @@ function drawStars() {
   }
 }
 
+let aliensToSpawnOnClear = 3; // You can increase this for more difficulty
+
+
 const ALIEN_BULLET_SPEED = 2;
 const ALIEN_FIRE_DELAY = 100; // frames
 
@@ -557,43 +560,45 @@ function update() {
       canvas.height / 2 - 40,
       "lime"
     );
-
+  
     setTimeout(() => {
-      // Spawn a single new alien off-screen
-      let side = Math.floor(Math.random() * 4);
-      let x, y;
-
-      switch (side) {
-        case 0:
-          x = Math.random() * canvas.width;
-          y = -40;
-          break;
-        case 1:
-          x = canvas.width + 40;
-          y = Math.random() * canvas.height;
-          break;
-        case 2:
-          x = Math.random() * canvas.width;
-          y = canvas.height + 40;
-          break;
-        case 3:
-          x = -40;
-          y = Math.random() * canvas.height;
-          break;
+      for (let i = 0; i < aliensToSpawnOnClear; i++) {
+        let side = Math.floor(Math.random() * 4);
+        let x, y;
+  
+        switch (side) {
+          case 0:
+            x = Math.random() * canvas.width;
+            y = -40;
+            break;
+          case 1:
+            x = canvas.width + 40;
+            y = Math.random() * canvas.height;
+            break;
+          case 2:
+            x = Math.random() * canvas.width;
+            y = canvas.height + 40;
+            break;
+          case 3:
+            x = -40;
+            y = Math.random() * canvas.height;
+            break;
+        }
+  
+        aliens.push({
+          x,
+          y,
+          angle: 0,
+          fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+          health: 30,
+          radius: 20,
+        });
       }
-
-      aliens.push({
-        x,
-        y,
-        angle: 0,
-        fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-        health: 30,
-        radius: 20,
-      });
-
+  
       gameResetting = false;
     }, 1500);
   }
+  
 
   for (let i = explosions.length - 1; i >= 0; i--) {
     const exp = explosions[i];
