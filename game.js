@@ -91,19 +91,21 @@ alienLaserSound.volume = 0.1;
 
 // NEW: UFO laser sound (optional; adjust filename as needed)
 const ufoLaserSound = new Audio("sounds/ufo_laser.wav");
-ufoLaserSound.volume = 0.1;
+ufoLaserSound.volume = 0.3;
 
 /********************************/
 /*       WORLD ENTITIES         */
 /********************************/
 let civilians = [];
-let ufo = null;
+let ufos = [];
 
 let aliens = [];
 let alienBullets = [];
 
 // NEW: UFO bullet array
 let ufoBullets = [];
+
+const NUM_UFOS = 5;
 
 const NUM_STARS = 1000;
 const stars = [];
@@ -132,12 +134,12 @@ function drawStars() {
   }
 }
 
-let aliensToSpawnOnClear = 20;
+let aliensToSpawnOnClear = 4;
 let asteroidsToSpawnOnClear = 50;
 
 const ALIEN_BULLET_SPEED = 7;
 const ALIEN_FIRE_DELAY = 50;
-const NUM_ALIENS = 20;
+const NUM_ALIENS = 4;
 
 function generateAliens() {
   aliens = [];
@@ -180,7 +182,7 @@ generateAliens();
  * Expand the random positions of civilians to be anywhere in the world
  * (instead of 0..100). This ensures they're not all stuck in one corner.
  */
-function generateCivilians(num = 10) {
+function generateCivilians(num = 5) {
   civilians = [];
   for (let i = 0; i < num; i++) {
     civilians.push({
@@ -188,7 +190,7 @@ function generateCivilians(num = 10) {
       y: Math.random() * WORLD_HEIGHT,
       dx: (Math.random() - 0.5) * 1.5,
       dy: (Math.random() - 0.5) * 1.5,
-      radius: 20,
+      radius: 40,
       wanderTimer: Math.floor(Math.random() * 120 + 60),
     });
   }
@@ -197,20 +199,23 @@ function generateCivilians(num = 10) {
 // UFO spawning
 const UFO_FIRE_DELAY = 120; // frames between UFO shots
 const UFO_BULLET_SPEED = 6; // how fast the UFO laser travels
-function spawnUFO() {
-  const x = Math.random() * WORLD_WIDTH;
-  const y = Math.random() * WORLD_HEIGHT;
-  ufo = {
-    x,
-    y,
-    dx: (Math.random() - 0.5) * 2,
-    dy: (Math.random() - 0.5) * 2,
-    radius: 40,
-    health: 50,
-    wanderTimer: 100,
-    fireCooldown: UFO_FIRE_DELAY,
-  };
+function spawnUFO(count = 1) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.random() * WORLD_WIDTH;
+    const y = Math.random() * WORLD_HEIGHT;
+    ufos.push({
+      x,
+      y,
+      dx: (Math.random() - 0.5) * 2,
+      dy: (Math.random() - 0.5) * 2,
+      radius: 40,
+      health: 50,
+      wanderTimer: 100,
+      fireCooldown: UFO_FIRE_DELAY,
+    });
+  }
 }
+
 
 let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let mouseThrusting = false;
@@ -359,7 +364,7 @@ function shootBullet() {
 /********************************/
 /*      UFO SHOOTING LOGIC      */
 /********************************/
-function ufoShoot() {
+function ufoShoot(ufo) {
   if (!ufo) return;
   // Find the nearest civilian to shoot at
   let nearestCivilian = null;
@@ -581,13 +586,16 @@ function update() {
     const sx = civilian.x - camera.x;
     const sy = civilian.y - camera.y;
     if (isOnCamera(civilian)) {
-      ctx.drawImage(civilianImg, sx - 20, sy - 20, 40, 40);
+      const size = civilian.radius * 2;
+      ctx.drawImage(civilianImg, sx - size / 2, sy - size / 2, size, size);
     }
   }
 
   // --- Update & Draw UFO (now hunting civilians) ---
-  if (ufo) {
-    // If civilians exist, hunt the nearest one
+  for (let i = ufos.length - 1; i >= 0; i--) {
+    const ufo = ufos[i];
+  
+    // === Movement Logic ===
     if (civilians.length > 0) {
       let nearest = null;
       let minDist = Infinity;
@@ -600,12 +608,11 @@ function update() {
       }
       if (nearest) {
         const angle = Math.atan2(nearest.y - ufo.y, nearest.x - ufo.x);
-        const speed = 2; // UFO hunting speed
+        const speed = 2;
         ufo.dx = Math.cos(angle) * speed;
         ufo.dy = Math.sin(angle) * speed;
       }
     } else {
-      // No civilians? Wander randomly.
       ufo.wanderTimer--;
       if (ufo.wanderTimer <= 0) {
         ufo.dx = (Math.random() - 0.5) * 2;
@@ -613,23 +620,29 @@ function update() {
         ufo.wanderTimer = 100 + Math.random() * 100;
       }
     }
+  
     ufo.x += ufo.dx;
     ufo.y += ufo.dy;
-    // Bounce at world edges
+  
+    // Bounce at edges
     if (ufo.x < 0 || ufo.x > WORLD_WIDTH) ufo.dx *= -1;
     if (ufo.y < 0 || ufo.y > WORLD_HEIGHT) ufo.dy *= -1;
-    // UFO firing logic
+  
+    // Fire
     ufo.fireCooldown--;
     if (ufo.fireCooldown <= 0) {
-      ufoShoot();
+      ufoShoot(ufo);
       ufo.fireCooldown = UFO_FIRE_DELAY;
     }
+  
+    // Draw UFO
     const sx = ufo.x - camera.x;
     const sy = ufo.y - camera.y;
     if (isOnCamera(ufo)) {
       ctx.drawImage(ufoImg, sx - 40, sy - 40, 80, 80);
     }
   }
+  
 
   // --- Draw the player's ship ---
   drawShip(ship.x, ship.y, ship.angle);
@@ -858,23 +871,25 @@ function update() {
       }
     }
     // Bullet vs. UFO collision
-    if (ufo && i >= 0) {
-      if (distanceBetween(b.x, b.y, ufo.x, ufo.y) < ufo.radius) {
+    for (let j = ufos.length - 1; j >= 0; j--) {
+      const u = ufos[j];
+      if (distanceBetween(b.x, b.y, u.x, u.y) < u.radius) {
         bullets.splice(i, 1);
-        ufo.health -= 10;
-        createFloatingText("-10", ufo.x, ufo.y, "orange");
-        if (ufo.health <= 0) {
-          explosions.push({ x: ufo.x, y: ufo.y, size: 50, life: 30 });
-          createFloatingText("UFO Destroyed!", ufo.x, ufo.y - 20, "red");
+        u.health -= 10;
+        createFloatingText("-10", u.x, u.y, "orange");
+    
+        if (u.health <= 0) {
+          explosions.push({ x: u.x, y: u.y, size: 50, life: 30 });
+          createFloatingText("UFO Destroyed!", u.x, u.y - 20, "red");
           explosionSound.currentTime = 0;
           explosionSound.play();
           score += 500;
-          ufo = null;
-          setTimeout(spawnUFO, 8000);
+          ufos.splice(j, 1);
         }
-        continue;
+        break;
       }
     }
+    
     b.x += b.dx;
     b.y += b.dy;
     b.life--;
@@ -1227,7 +1242,7 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   generateAliens();
   generateAsteroids();
   generateCivilians();
-  spawnUFO();
+  spawnUFO(NUM_UFOS);
   document.getElementById("restartBtn").style.display = "none";
   updateLoop = requestAnimationFrame(update);
 });
