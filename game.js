@@ -683,8 +683,7 @@ function update() {
     });
 
     // 2) Dodge nearby player bullets
-    // 2) Dodge nearby player bullets
-    const DODGE_RADIUS = 200;
+    const DODGE_RADIUS = 100;
     const DODGE_FORCE = 0.6; // Increased for quicker dodge
     let bulletDodge = { x: 0, y: 0 };
 
@@ -1277,7 +1276,7 @@ function capSpeed() {
 }
 
 function smartAutopilot() {
-  const DODGE_RADIUS = 250;
+  const DODGE_RADIUS = 100;
   const DODGE_FORCE = 0.15;
   const bulletDodgeX = { x: 0, y: 0 };
   const asteroidDodgeX = { x: 0, y: 0 };
@@ -1360,7 +1359,7 @@ function smartAutopilot() {
 
 function opponentAutopilot() {
   // 1) Dodge player's bullets
-  const DODGE_RADIUS = 250;
+  const DODGE_RADIUS = 100;
   const DODGE_FORCE = 0.15; // tweak as you like
   let bulletDodge = { x: 0, y: 0 };
 
