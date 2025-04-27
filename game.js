@@ -8,6 +8,9 @@ alienImg.src = 'images/alien.png';
 const opponentImg = new Image();
 opponentImg.src = 'images/alien.png'; // Using alien image for opponent as requested
 
+const asteroidImg = new Image();
+asteroidImg.src = 'images/asteroid.png'; // Place your asteroid.png inside your images/ folder
+
 // === [Bullet Images] ===
 const playerBulletImg = new Image();
 playerBulletImg.src = 'images/laser.png'; // Use laser image for player bullet
@@ -17,6 +20,9 @@ alienBulletImg.src = 'images/alien_bullet.png';
 
 const ufoLaserImg = new Image();
 ufoLaserImg.src = 'images/laser.png';
+
+const opponentLaserImg = new Image(); // Added opponent laser image
+opponentLaserImg.src = 'images/laser.png'; // Using the same laser image for now
 
 // === [Sound Effects] ===
 const shootSound = new Audio('sounds/laser.wav');
@@ -133,7 +139,7 @@ let alienBullets = [];
 // === [Opponent Settings] ===
 const OPPONENT_RADIUS = 25;
 const OPPONENT_SPEED = 1.8; // Note: OPPONENT_SPEED is defined but not used in the provided updateOpponent logic
-const OPPONENT_BULLET_SPEED = 5;
+const OPPONENT_BULLET_SPEED = 7; // Increased speed
 const OPPONENT_FIRE_DELAY = 60; // frames between shots
 
 let opponent = {
@@ -1501,11 +1507,11 @@ function updateAsteroids() {
         ctx.save();
         ctx.translate(sx, sy);
         ctx.rotate(a.currentRotation);
-        ctx.strokeStyle = 'gray';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, a.radius, 0, Math.PI * 2);
-        ctx.stroke();
+
+        // Draw asteroid image
+        const imgSize = a.radius * 2; // size the image to match asteroid size
+        ctx.drawImage(asteroidImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+
         ctx.restore();
     }
 
@@ -1828,33 +1834,33 @@ function updateOpponentBullets() {
     // Remove if expired or out of bounds
     if (b.life <= 0 || b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) {
       opponentBullets.splice(i, 1);
-      continue; // Skip drawing and collision check for this bullet
+      continue;
     }
 
-    // Draw Opponent bullet (only if visible)
+    // Draw opponent bullet (laser)
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
-    // Culling check
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-        ctx.fillStyle = 'yellow'; // Different color for opponent bullets
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3, 0, Math.PI * 2); // Draw as a small yellow circle
-        ctx.fill();
+      const bulletSize = 20; // You can adjust size if needed
+      const bulletHeight = 16; // Taller if you want
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(b.dy, b.dx)); // Rotate laser to match movement
+      ctx.drawImage(opponentLaserImg, -bulletSize / 2, -bulletHeight / 2, bulletSize, bulletHeight);
+      ctx.restore();
     }
 
     // Check hit with player ship
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
-      ship.health -= 20; // Player takes damage
-      opponentBullets.splice(i, 1); // Remove bullet after hit
-      createFloatingText(`⚡ Hit by Opponent! HP: ${ship.health}`, ship.x, ship.y - 50, 'yellow', 22, true, true);
-      shipHitSound.currentTime = 0; // Play hit sound
+      ship.health -= 10; // Player takes damage from opponent bullet
+      opponentBullets.splice(i, 1); // Remove bullet
+      shipHitSound.currentTime = 0;
       shipHitSound.play();
-
       if (ship.health <= 0) {
-        respawnShip(); // Respawn player if health drops to 0
+        respawnShip();
       }
-      // No continue needed here, bullet is removed, loop proceeds to next index (i-1)
+      continue;
     }
   }
 }
