@@ -128,7 +128,7 @@ let bullets = [];
 let bulletCooldown = 0;
 
 // === [Asteroid Settings] ===
-const NUM_ASTEROIDS = 20;
+const NUM_ASTEROIDS = 10;
 const ASTEROID_MIN_RADIUS = 20;
 const ASTEROID_MAX_RADIUS = 50;
 const ASTEROID_SPEED = 2.5;
