@@ -1,3 +1,23 @@
+// === [Images] ===
+const shipImg = new Image();
+shipImg.src = 'images/spaceship.png';
+
+const alienImg = new Image();
+alienImg.src = 'images/alien.png';
+
+const opponentImg = new Image();
+opponentImg.src = 'images/alien.png'; // Using alien image for opponent as requested
+
+// === [Bullet Images] ===
+const playerBulletImg = new Image();
+playerBulletImg.src = 'images/laser.png'; // Use laser image for player bullet
+
+const alienBulletImg = new Image();
+alienBulletImg.src = 'images/alien_bullet.png';
+
+const ufoLaserImg = new Image();
+ufoLaserImg.src = 'images/laser.png';
+
 // === [Sound Effects] ===
 const shootSound = new Audio('sounds/laser.wav');
 const explosionSound = new Audio('sounds/explosion.wav');
@@ -17,6 +37,9 @@ let alienBaseFireDelay = 100;
 
 // === [Autopilot Settings] ===
 let autopilot = false;
+
+// === [Gallery Mode Settings] ===
+let inGalleryMode = false;
 
 // Initialize Canvas
 const canvas = document.getElementById('gameCanvas');
@@ -391,6 +414,134 @@ document.getElementById('autopilotBtn').addEventListener('click', () => {
   // Hide or show joystick based on autopilot
   joystickContainer.style.display = autopilot ? 'none' : 'flex';
 });
+
+// === [Handle Gallery Button] ===
+document.getElementById('galleryBtn').addEventListener('click', () => {
+  inGalleryMode = !inGalleryMode;
+  document.getElementById('galleryBtn').textContent = inGalleryMode ? '🎮 Back to Game' : '🖼️ Show Gallery';
+
+  if (inGalleryMode) {
+    // Placeholder for gallery drawing function
+    // console.log("Entering gallery mode - drawObjectGallery() needs implementation");
+    drawObjectGallery(); // Show all objects
+    // Clear the canvas for the gallery view
+    // ctx.fillStyle = 'black';
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // You might want to draw a placeholder message here
+    // ctx.fillStyle = 'white';
+    // ctx.font = '24px Arial';
+    // ctx.textAlign = 'center';
+    // ctx.fillText('Gallery Mode - Objects will be displayed here', canvas.width / 2, canvas.height / 2);
+
+  } else {
+    update(); // Resume normal game
+  }
+});
+
+// === [Draw Object Gallery Function] ===
+function drawObjectGallery() {
+  // Clear screen
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const baseY = canvas.height / 2;
+  let startX = 100;
+  const spacing = 220; // More space for labels
+  const labelOffset = 70; // How high to draw label above object
+
+  ctx.textAlign = 'center';
+  ctx.font = '18px Arial';
+  ctx.fillStyle = 'white';
+
+  // 1. Draw Ship
+  ctx.fillText('Spaceship', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.rotate(Math.PI / 2); // Face right
+  ctx.drawImage(shipImg, -30, -30, 60, 60);
+  ctx.restore();
+
+  // Draw player laser
+  ctx.drawImage(playerBulletImg, startX + 50, baseY - 8, 20, 16);
+
+  startX += spacing;
+
+  // 2. Draw Alien
+  ctx.fillText('Alien', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(alienImg, -30, -30, 60, 60);
+  ctx.restore();
+
+  // Draw alien bullet
+  ctx.drawImage(alienBulletImg, startX + 50, baseY - 6, 12, 12);
+
+  startX += spacing;
+
+  // 3. Draw Opponent
+  ctx.fillText('Opponent', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(opponentImg, -30, -30, 60, 60);
+  ctx.restore();
+
+  // Draw opponent bullet (just a yellow dot)
+  ctx.fillStyle = 'yellow';
+  ctx.beginPath();
+  ctx.arc(startX + 50, baseY, 5, 0, Math.PI * 2);
+  ctx.fill();
+  // Reset fillStyle for next label
+  ctx.fillStyle = 'white';
+
+  startX += spacing;
+
+  // 4. Draw UFO
+  ctx.fillText('UFO', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.strokeStyle = 'violet';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 25, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw UFO laser
+  ctx.drawImage(ufoLaserImg, startX + 50, baseY - 8, 16, 16);
+
+  startX += spacing;
+
+  // 5. Draw Civilian
+  ctx.fillText('Civilian', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.fillStyle = 'lightblue';
+  ctx.beginPath();
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // Reset fillStyle for next label
+  ctx.fillStyle = 'white';
+
+  // Draw civilian bullet (player laser reused)
+  ctx.drawImage(playerBulletImg, startX + 50, baseY - 8, 20, 16);
+
+  startX += spacing;
+
+  // 6. Draw Asteroid
+  ctx.fillText('Asteroid', startX, baseY - labelOffset);
+  ctx.save();
+  ctx.translate(startX, baseY);
+  ctx.strokeStyle = 'gray';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 40, 0, Math.PI * 2); // Big asteroid
+  ctx.stroke();
+  ctx.restore();
+}
+
 
 // === [Restart Button] ===
 document.getElementById('restartBtn').addEventListener('click', restartGame);
@@ -885,10 +1036,8 @@ function updateUFOLasers() {
     const sx = l.x - camera.x;
     const sy = l.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-        ctx.fillStyle = 'cyan';
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-        ctx.fill();
+        const laserSize = 16;
+        ctx.drawImage(ufoLaserImg, sx - laserSize/2, sy - laserSize/2, laserSize, laserSize);
     }
 
 
@@ -937,10 +1086,8 @@ function updateAlienBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      ctx.fillStyle = 'lime';
-      ctx.beginPath();
-      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-      ctx.fill();
+      const bulletSize = 12;
+      ctx.drawImage(alienBulletImg, sx - bulletSize/2, sy - bulletSize/2, bulletSize, bulletSize);
     }
 
     // Check hit with player ship
@@ -975,10 +1122,12 @@ function updateCivilianBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) { // Culling check
-        ctx.fillStyle = 'lightblue';
-        ctx.beginPath();
-        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
-        ctx.fill();
+        const bulletSize = 20;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(Math.atan2(b.dy, b.dx)); // Rotate bullet to match its movement
+        ctx.drawImage(playerBulletImg, -bulletSize/2, -bulletSize/2, bulletSize, bulletSize);
+        ctx.restore();
     }
 
     // Check hit with UFO
@@ -1000,6 +1149,9 @@ function updateCivilianBullets() {
 
 // Game Loop
 function update() {
+  // === [Gallery Mode Check] ===
+  if (inGalleryMode) return; // Stop updating game while in gallery mode
+
   // Ship rotation is handled differently depending on autopilot state
   // Manual rotation happens via input handlers setting ship.rotation
 
@@ -1119,35 +1271,10 @@ function updateBullets() {
     if (d < opponent.radius) {
       bullets.splice(i, 1); // Remove bullet
       opponent.health -= 50; // Apply damage
-      createFloatingText(`💥 Opponent HP: ${opponent.health}`, opponent.x, opponent.y - 40, 'orange', 22, true, true);
-      if (opponent.health <= 0) {
-        // Handle opponent defeat (respawn, score)
-        createFloatingText(`🏆 Opponent Defeated!`, opponent.x, opponent.y - 60, 'gold', 32, true, true);
-        opponent.health = 100;
-        opponent.x = Math.random() * WORLD_WIDTH;
-        opponent.y = Math.random() * WORLD_HEIGHT;
-        opponent.thrust.x = 0; // Reset thrust
-        opponent.thrust.y = 0; // Reset thrust
-        score += 500; // Award score
+            createFloatingText(`Opponent Hit!`, opponent.x, opponent.y, 'red', 22, true, true);
+          }
+        }
       }
-      continue; // Skip other checks for this bullet as it's gone
-    }
-    // === [End Bullet Collision with Opponent] ===
-
-
-    // Draw bullet relative to camera
-    const sx = b.x - camera.x;
-    const sy = b.y - camera.y;
-
-    // Only draw if visible in
-    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
-        ctx.fill();
-    }
-  }
-}
 
 // === [Update and Draw Asteroids] ===
 function updateAsteroids() {
@@ -1361,11 +1488,10 @@ function updateAliens() {
         ctx.save();
         ctx.translate(sx, sy);
         ctx.rotate(a.angle + Math.PI / 2);
-        ctx.strokeStyle = 'lightgreen';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, a.radius, 0, Math.PI * 2);
-        ctx.stroke();
+
+        const imgSize = a.radius * 2; // make image match alien size
+        ctx.drawImage(alienImg, -imgSize/2, -imgSize/2, imgSize, imgSize);
+
         ctx.restore();
     }
 
@@ -1510,17 +1636,10 @@ function updateOpponent() {
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(opponent.angle + Math.PI / 2); // Align sprite rotation if needed
-      ctx.strokeStyle = 'orange';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      // Simple circle for opponent for now
-      ctx.arc(0, 0, opponent.radius, 0, Math.PI * 2);
-      // Example triangle shape (like player)
-      // ctx.moveTo(0, -opponent.radius);
-      // ctx.lineTo(opponent.radius * 0.6, opponent.radius);
-      // ctx.lineTo(-opponent.radius * 0.6, opponent.radius);
-      // ctx.closePath();
-      ctx.stroke();
+
+      const imgSize = opponent.radius * 2;
+      ctx.drawImage(opponentImg, -imgSize/2, -imgSize/2, imgSize, imgSize);
+
       ctx.restore();
   }
 }
@@ -1574,14 +1693,8 @@ function drawShip() {
   ctx.translate(sx, sy);
   ctx.rotate(ship.angle + Math.PI / 2);
 
-  ctx.strokeStyle = ship.color;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, -ship.radius);
-  ctx.lineTo(ship.radius * 0.6, ship.radius);
-  ctx.lineTo(-ship.radius * 0.6, ship.radius);
-  ctx.closePath();
-  ctx.stroke();
+  const imgSize = ship.radius * 2; // Size based on ship radius
+  ctx.drawImage(shipImg, -imgSize/2, -imgSize/2, imgSize, imgSize);
 
   ctx.restore();
 }
