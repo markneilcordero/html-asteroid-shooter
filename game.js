@@ -553,6 +553,18 @@ function smartAutopilot() {
     }
   }
 
+  // === [2. Dodge Asteroids] ===
+  for (const asteroid of asteroids) {
+    const dx = ship.x - asteroid.x;
+    const dy = ship.y - asteroid.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DODGE_RADIUS + asteroid.radius) { // Bigger radius because asteroids are bigger
+      const repelForce = (1 - dist / (DODGE_RADIUS + asteroid.radius));
+      dodge.x += (dx / dist) * repelForce;
+      dodge.y += (dy / dist) * repelForce;
+    }
+  }
+
   // Normalize dodge vector and apply dodge force
   const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
   if (dodgeMag > 0) {
@@ -583,6 +595,17 @@ function smartAutopilot() {
       if (d < minDist) {
         minDist = d;
         nearestTarget = opponent;
+      }
+    }
+
+    // 🆕 Optional: Hunt asteroids if no enemies
+    if (!nearestTarget && asteroids.length > 0) {
+      for (const asteroid of asteroids) {
+        const d = Math.hypot(asteroid.x - ship.x, asteroid.y - ship.y);
+        if (d < minDist) {
+          minDist = d;
+          nearestTarget = asteroid;
+        }
       }
     }
 
