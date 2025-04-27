@@ -383,6 +383,9 @@ document.getElementById('autopilotBtn').addEventListener('click', () => {
   joystickContainer.style.display = autopilot ? 'none' : 'flex';
 });
 
+// === [Restart Button] ===
+document.getElementById('restartBtn').addEventListener('click', restartGame);
+
 // Update camera to center on ship
 function updateCamera() {
   camera.x = ship.x - camera.w / 2;
@@ -393,6 +396,50 @@ function updateCamera() {
   if (camera.y < 0) camera.y = 0;
   if (camera.x + camera.w > WORLD_WIDTH) camera.x = WORLD_WIDTH - camera.w;
   if (camera.y + camera.h > WORLD_HEIGHT) camera.y = WORLD_HEIGHT - camera.h;
+}
+
+// === [Restart Game Function] ===
+function restartGame() {
+  // Reset player ship
+  ship.x = WORLD_WIDTH / 2;
+  ship.y = WORLD_HEIGHT / 2;
+  ship.thrust = { x: 0, y: 0 };
+  ship.angle = 0;
+  ship.health = 100;
+
+  // Reset score
+  score = 0;
+
+  // Reset arrays
+  bullets = [];
+  alienBullets = [];
+  opponentBullets = [];
+  ufoLasers = [];
+  explosions = [];
+  floatingTexts = [];
+
+  // Respawn entities
+  generateAsteroids();   // call your function that spawns asteroids
+  spawnAliens();         // call your function that spawns aliens
+  spawnCivilians();      // call your function that spawns civilians
+  spawnUFOs();           // call your function that spawns ufos
+
+  // Reset opponent
+  opponent = {
+    x: WORLD_WIDTH / 2 + 200,
+    y: WORLD_HEIGHT / 2 + 200,
+    radius: OPPONENT_RADIUS,
+    angle: 0,
+    thrust: { x: 0, y: 0 },
+    health: 100,
+    fireCooldown: 0,
+  };
+
+  // Optional: Reset camera
+  updateCamera();
+
+  // Hide or show joystick based on autopilot state
+  joystickContainer.style.display = autopilot ? 'none' : 'flex';
 }
 
 // === [Smart Autopilot Logic] ===
