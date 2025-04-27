@@ -115,14 +115,14 @@ let score = 0;
 const BULLET_SPEED = 8;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
-const AUTOPILOT_FIRE_COOLDOWN = 50; // frames between shots when autopilot is ON (adjustable)
+const AUTOPILOT_FIRE_COOLDOWN = 10; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
-const PLAYER_BULLET_LIFE = 500;
-const ALIEN_BULLET_LIFE = 500;
-const UFO_LASER_LIFE = 500;
-const OPPONENT_BULLET_LIFE = 500;
-const CIVILIAN_BULLET_LIFE = 500;
+const PLAYER_BULLET_LIFE = 800;
+const ALIEN_BULLET_LIFE = 800;
+const UFO_LASER_LIFE = 800;
+const OPPONENT_BULLET_LIFE = 800;
+const CIVILIAN_BULLET_LIFE = 800;
 
 let bullets = [];
 let bulletCooldown = 0;
