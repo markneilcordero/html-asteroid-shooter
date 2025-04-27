@@ -478,49 +478,59 @@ function smartAutopilot() {
 
   // 2. Hunt nearest alien (only if not actively dodging)
   if (dodgeMag <= 0) { // Prioritize dodging
-      let nearestAlien = null;
+      // === Hunt nearest alien or opponent ===
+      let nearestTarget = null;
       let minDist = Infinity;
 
+      // Check aliens first
       for (const alien of aliens) {
-          const d = Math.sqrt((alien.x - ship.x) ** 2 + (alien.y - ship.y) ** 2);
-          if (d < minDist) {
-              minDist = d;
-              nearestAlien = alien;
-          }
+        const d = Math.sqrt((alien.x - ship.x) ** 2 + (alien.y - ship.y) ** 2);
+        if (d < minDist) {
+          minDist = d;
+          nearestTarget = alien;
+        }
       }
 
-      if (nearestAlien) {
-          const dx = nearestAlien.x - ship.x;
-          const dy = nearestAlien.y - ship.y;
-          const angleToAlien = Math.atan2(dy, dx);
+      // Also check opponent if alive
+      if (opponent.health > 0) {
+        const d = Math.sqrt((opponent.x - ship.x) ** 2 + (opponent.y - ship.y) ** 2);
+        if (d < minDist) {
+          minDist = d;
+          nearestTarget = opponent;
+        }
+      }
 
-          // Smoothly turn towards the alien
-          const angleDiff = angleToAlien - ship.angle;
-          // Normalize angle difference to [-PI, PI]
-          const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-          ship.angle += normalizedAngleDiff * 0.1; // Adjust rotation speed (e.g., 0.1 for smooth turning)
+      // === Move and shoot at nearestTarget ===
+      if (nearestTarget) {
+        const dx = nearestTarget.x - ship.x;
+        const dy = nearestTarget.y - ship.y;
+        const angleToTarget = Math.atan2(dy, dx);
 
+        // Smooth rotation toward target
+        const angleDiff = angleToTarget - ship.angle;
+        const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        ship.angle += normalizedAngleDiff * 0.1;
 
-          // Move towards alien if far
-          if (minDist > 150) { // Maintain some distance
-              ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8; // Slightly less aggressive thrust
-              ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
-          } else if (minDist < 100) { // Move away if too close
-              ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.5;
-              ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.5;
-          }
+        // Move toward target if far
+        if (minDist > 150) {
+          ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8;
+          ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
+        } else if (minDist < 100) {
+          // Move away if too close
+          ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.5;
+          ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.5;
+        }
 
-
-          // Shoot if ready and facing roughly towards the alien
-          const angleError = Math.abs(normalizedAngleDiff);
-          if (bulletCooldown <= 0 && angleError < Math.PI / 6) { // Check if angle is within 30 degrees
-              shootBullet();
-              bulletCooldown = BULLET_COOLDOWN;
-          }
+        // Shoot if aiming near target
+        const angleError = Math.abs(normalizedAngleDiff);
+        if (bulletCooldown <= 0 && angleError < Math.PI / 6) {
+          shootBullet();
+          bulletCooldown = BULLET_COOLDOWN;
+        }
       } else {
-          // No aliens left, maybe just drift or apply friction
-          ship.thrust.x *= FRICTION;
-          ship.thrust.y *= FRICTION;
+        // No target, apply friction
+        ship.thrust.x *= FRICTION;
+        ship.thrust.y *= FRICTION;
       }
   } else {
       // If dodging, apply friction to counter hunting thrust
@@ -924,7 +934,6 @@ function update() {
   } else {
     // Manual control + passive dodge
     ship.angle += ship.rotation; // Apply manual rotation
-    dodgeOnlyAutopilot(); // Apply passive dodging force
 
     // Manual Thrust
     if (ship.thrusting) {
