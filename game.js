@@ -1076,36 +1076,42 @@ function updateCivilianBullets() {
 }
 
 // === [New Function: Check for New Wave] ===
+let waveInProgress = false;
+
 function checkForNewWave() {
+  if (waveInProgress) return; // Already spawning, skip
+
   if (aliens.length === 0 && ufos.length === 0 && opponent.health <= 0) {
-    alienWave++;
-    aliensPerWave += 1;
-    alienBaseHealth += 5;
-    alienBaseSpeed += 0.1;
-    alienBaseFireDelay = Math.max(40, alienBaseFireDelay - 5);
-    spawnAliens();
+    waveInProgress = true;
+    setTimeout(() => {
+      alienWave++;
+      aliensPerWave++;
+      alienBaseHealth += 5;
+      alienBaseSpeed += 0.1;
+      alienBaseFireDelay = Math.max(40, alienBaseFireDelay - 5);
 
-    // Respawn opponent
-    opponent = {
-      x: WORLD_WIDTH / 2 + 200,
-      y: WORLD_HEIGHT / 2 + 200,
-      radius: OPPONENT_RADIUS,
-      angle: 0,
-      thrust: { x: 0, y: 0 },
-      health: 100,
-      fireCooldown: 0,
-    };
+      spawnAliens();
+      spawnUFOs();
+      spawnCivilians();
 
-    // Respawn civilians and ufos
-    spawnCivilians();
-    spawnUFOs();
+      opponent = {
+        x: WORLD_WIDTH / 2 + 200,
+        y: WORLD_HEIGHT / 2 + 200,
+        radius: OPPONENT_RADIUS,
+        angle: 0,
+        thrust: { x: 0, y: 0 },
+        health: 100,
+        fireCooldown: 0,
+      };
 
-    const colors = ['gold', 'cyan', 'lime', 'orange', 'violet'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    createFloatingText(`⚡ WAVE ${alienWave} - Full Reset!`, ship.x, ship.y - 50, randomColor, 36, true, true);
+      const colors = ['gold', 'cyan', 'lime', 'orange', 'violet'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      createFloatingText(`⚡ WAVE ${alienWave} - Full Reset!`, ship.x, ship.y - 50, randomColor, 36, true, true);
+
+      waveInProgress = false;
+    }, 500); // Delay 0.5s before spawning
   }
 }
-
 
 // Game Loop
 function update() {
@@ -1371,6 +1377,7 @@ function updateAsteroids() {
         asteroids.splice(i, 1); // Remove asteroid
         break; // Stop checking this asteroid
       }
+      checkForNewWave();
     }
 
     // Opponent
@@ -1385,6 +1392,7 @@ function updateAsteroids() {
       asteroids.splice(i, 1); // Remove asteroid
       break; // Stop checking this asteroid
     }
+    checkForNewWave();
 
     // UFOs
     for (let k = ufos.length - 1; k >= 0; k--) {
