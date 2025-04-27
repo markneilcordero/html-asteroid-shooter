@@ -1474,10 +1474,16 @@ function updateAliens() {
     const dist = Math.sqrt(dx * dx + dy * dy);
     a.angle = Math.atan2(dy, dx);
 
-    if (dist > 60) { // Don't get too close
-      a.x += Math.cos(a.angle) * a.speed; // Use alien's specific speed
-      a.y += Math.sin(a.angle) * a.speed; // Use alien's specific speed
+    if (dist > 120) { 
+      // Chase toward player if far
+      a.x += Math.cos(a.angle) * a.speed;
+      a.y += Math.sin(a.angle) * a.speed;
+    } else if (dist < 80) {
+      // Back away if too close
+      a.x -= Math.cos(a.angle) * a.speed * 1.5; // Move faster when backing off
+      a.y -= Math.sin(a.angle) * a.speed * 1.5;
     }
+    // Between 80 and 120, just aim and shoot (hovering, no strong movement)    
 
     // === [Alien Avoidance with Other Aliens] ===
     for (let j = 0; j < aliens.length; j++) {
@@ -1515,6 +1521,13 @@ function updateAliens() {
 
       if (distOp < minDistOp && distOp > 0) {
         const overlapOp = minDistOp - distOp;
+        // Push alien away from opponent
+        a.x += (dxOp / distOp) * overlapOp;
+        a.y += (dyOp / distOp) * overlapOp;
+  
+        // Also push opponent a little (optional, looks smoother)
+        opponent.x -= (dxOp / distOp) * (overlapOp * 0.5);
+        opponent.y -= (dyOp / distOp) * (overlapOp * 0.5);
         // Push alien and opponent away from each other
         // We only push the alien here to avoid modifying the opponent object
         // directly within the alien update loop, which could lead to complex interactions.
@@ -1528,8 +1541,14 @@ function updateAliens() {
     a.fireCooldown--;
     if (a.fireCooldown <= 0) {
       alienShoot(a);
-      a.fireCooldown = alienBaseFireDelay; // Use base delay for reset
-    }
+      
+      // If close, shoot faster
+      if (dist < 150) {
+        a.fireCooldown = Math.floor(alienBaseFireDelay * 0.5); // shoot twice as fast if near
+      } else {
+        a.fireCooldown = alienBaseFireDelay;
+      }
+    }    
 
     // Draw alien
     const sx = a.x - camera.x;
