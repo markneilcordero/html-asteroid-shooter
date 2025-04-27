@@ -98,6 +98,19 @@
   </style>
 </head>
 <body>
+  <!-- 🔊 Enable Sound Button (MUST be before canvas so it's top layer) -->
+  <button id="enableSoundBtn" style="
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    padding: 20px 40px;
+    font-size: 1.5rem;
+  ">
+    🔊 Enable Sound
+  </button>
+
   <canvas id="gameCanvas"></canvas>
 
   <div id="joystickContainer">
@@ -128,6 +141,15 @@
         shootBullet();
         bulletCooldown = BULLET_COOLDOWN;
       }
+    });
+
+    // 🔊 Handle Enable Sound Button
+    const enableSoundBtn = document.getElementById('enableSoundBtn');
+    enableSoundBtn.addEventListener('click', () => {
+      shootSound.play().then(() => shootSound.pause());
+      explosionSound.play().then(() => explosionSound.pause());
+      shipHitSound.play().then(() => shipHitSound.pause());
+      enableSoundBtn.style.display = 'none'; // Hide button after clicked
     });
   </script>
 </body>
