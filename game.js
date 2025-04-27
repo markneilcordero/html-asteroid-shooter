@@ -1291,6 +1291,69 @@ function updateAsteroids() {
         break; // stop checking this asteroid for other bullets
       }
     }
+
+    // === [Asteroid Collision with Aliens, Opponent, UFOs, and Civilians] ===
+
+    // Aliens
+    for (let k = aliens.length - 1; k >= 0; k--) {
+      const alien = aliens[k];
+      const dx = a.x - alien.x;
+      const dy = a.y - alien.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < a.radius + alien.radius) {
+        createExplosion(a.x, a.y, a.radius * 2);
+        createExplosion(alien.x, alien.y, alien.radius * 2);
+        aliens.splice(k, 1); // Remove alien
+        asteroids.splice(i, 1); // Remove asteroid
+        break; // Stop checking this asteroid
+      }
+    }
+
+    // Opponent
+    const dxOp = a.x - opponent.x;
+    const dyOp = a.y - opponent.y;
+    const distOp = Math.sqrt(dxOp * dxOp + dyOp * dyOp);
+
+    if (opponent.health > 0 && distOp < a.radius + opponent.radius) {
+      createExplosion(a.x, a.y, a.radius * 2);
+      createExplosion(opponent.x, opponent.y, opponent.radius * 2);
+      opponent.health = 0; // Destroy opponent
+      asteroids.splice(i, 1); // Remove asteroid
+      break; // Stop checking this asteroid
+    }
+
+    // UFOs
+    for (let k = ufos.length - 1; k >= 0; k--) {
+      const ufo = ufos[k];
+      const dx = a.x - ufo.x;
+      const dy = a.y - ufo.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < a.radius + ufo.radius) {
+        createExplosion(a.x, a.y, a.radius * 2);
+        createExplosion(ufo.x, ufo.y, ufo.radius * 2);
+        ufos.splice(k, 1); // Remove UFO
+        asteroids.splice(i, 1); // Remove asteroid
+        break; // Stop checking this asteroid
+      }
+    }
+
+    // Civilians
+    for (let k = civilians.length - 1; k >= 0; k--) {
+      const civ = civilians[k];
+      const dx = a.x - civ.x;
+      const dy = a.y - civ.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < a.radius + civ.radius) {
+        createExplosion(a.x, a.y, a.radius * 2);
+        createExplosion(civ.x, civ.y, civ.radius * 2);
+        civilians.splice(k, 1); // Remove civilian
+        asteroids.splice(i, 1); // Remove asteroid
+        break; // Stop checking this asteroid
+      }
+    }
   }
 }
 
