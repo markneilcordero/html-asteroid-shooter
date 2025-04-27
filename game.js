@@ -75,7 +75,7 @@ const camera = {
 };
 
 // === [Starfield Background] ===
-const NUM_STARS = 300;
+const NUM_STARS = 500;
 const stars = [];
 for (let i = 0; i < NUM_STARS; i++) {
   stars.push({
@@ -128,7 +128,7 @@ let bullets = [];
 let bulletCooldown = 0;
 
 // === [Asteroid Settings] ===
-const NUM_ASTEROIDS = 10;
+const NUM_ASTEROIDS = 50;
 const ASTEROID_MIN_RADIUS = 20;
 const ASTEROID_MAX_RADIUS = 50;
 const ASTEROID_SPEED = 1.5;
