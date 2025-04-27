@@ -1,113 +1,38 @@
-/********************************/
-/*      CAMERA & WORLD SETUP    */
-/********************************/
+// === [Sound Effects] ===
+const shootSound = new Audio('sounds/laser.wav');
+const explosionSound = new Audio('sounds/explosion.wav');
+const shipHitSound = new Audio('sounds/ship_hit.wav');
+
+// Adjust volumes if needed
+shootSound.volume = 0.2;
+explosionSound.volume = 0.5;
+shipHitSound.volume = 0.5;
+
+// === [Autopilot Settings] ===
+let autopilot = false;
+
+// Initialize Canvas
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Set canvas size to full window
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// === [World Settings] ===
 const WORLD_WIDTH = 4000;
 const WORLD_HEIGHT = 4000;
 
-// Camera object
+// === [Camera Object] ===
 const camera = {
   x: 0,
   y: 0,
-  w: 800, // you can set this to canvas.width in init or on resize
-  h: 600, // you can set this to canvas.height in init or on resize
+  w: canvas.width,
+  h: canvas.height,
 };
 
-// Helper to update camera position so it follows the ship
-function updateCamera() {
-  // Center camera on the ship
-  camera.x = ship.x - camera.w / 2;
-  camera.y = ship.y - camera.h / 2;
-
-  // Clamp camera so it never goes outside the world
-  if (camera.x < 0) camera.x = 0;
-  if (camera.y < 0) camera.y = 0;
-  if (camera.x + camera.w > WORLD_WIDTH) camera.x = WORLD_WIDTH - camera.w;
-  if (camera.y + camera.h > WORLD_HEIGHT) camera.y = WORLD_HEIGHT - camera.h;
-}
-
-/********************************/
-/*        GAME VARIABLES        */
-/********************************/
-let gameResetting = false;
-let updateLoop = null;
-
-function stopGameLoop() {
-  if (updateLoop) {
-    cancelAnimationFrame(updateLoop);
-    updateLoop = null;
-  }
-}
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-// If your canvas is always the same size as camera.w/h, set them here:
-canvas.width = camera.w;
-canvas.height = camera.h;
-
-// Preload images
-const shipImg = new Image();
-shipImg.src = "images/spaceship.png";
-
-const bulletImg = new Image();
-bulletImg.src = "images/bullet.png";
-
-const explosionImg = new Image();
-explosionImg.src = "images/explosion.png";
-
-const asteroidImg = new Image();
-asteroidImg.src = "images/asteroid.png";
-
-const alienImg = new Image();
-alienImg.src = "images/alien.png";
-
-const alienBulletImg = new Image();
-alienBulletImg.src = "images/alien_bullet.png";
-
-const civilianImg = new Image();
-civilianImg.src = "images/civilian.png";
-
-const ufoImg = new Image();
-ufoImg.src = "images/ufo.png";
-
-// NEW: UFO laser image
-const ufoLaserImg = new Image();
-ufoLaserImg.src = "images/laser.png";
-
-// Sounds
-const explosionSound = new Audio("sounds/explosion.wav");
-explosionSound.volume = 0.6;
-
-const shipHitSound = new Audio("sounds/ship_hit.wav");
-shipHitSound.volume = 0.7; // optional
-
-const asteroidExplosionSound = new Audio("sounds/asteroid_explosion.wav");
-asteroidExplosionSound.volume = 0.6; // Tweak to fit
-
-const laserSound = new Audio("sounds/laser.wav");
-laserSound.volume = 0.1;
-
-const alienLaserSound = new Audio("sounds/alien_laser.wav");
-alienLaserSound.volume = 0.1;
-
-// NEW: UFO laser sound (optional; adjust filename as needed)
-const ufoLaserSound = new Audio("sounds/ufo_laser.wav");
-ufoLaserSound.volume = 0.3;
-
-/********************************/
-/*       WORLD ENTITIES         */
-/********************************/
-let civilians = [];
-let ufos = [];
-
-let aliens = [];
-let alienBullets = [];
-
-// NEW: UFO bullet array
-let ufoBullets = [];
-
-const NUM_UFOS = 5;
-
-const NUM_STARS = 1000;
+// === [Starfield Background] ===
+const NUM_STARS = 300;
 const stars = [];
 for (let i = 0; i < NUM_STARS; i++) {
   stars.push({
@@ -118,1043 +43,184 @@ for (let i = 0; i < NUM_STARS; i++) {
   });
 }
 
-function drawStars() {
-  for (const star of stars) {
-    // Position on screen = world space minus camera
-    const sx = star.x - camera.x;
-    const sy = star.y - camera.y;
-    // Only draw if on screen
-    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10)
-      continue;
+// Handle resize
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  // Update camera dimensions on resize
+  camera.w = canvas.width;
+  camera.h = canvas.height;
+});
 
-    ctx.beginPath();
-    ctx.arc(sx, sy, star.radius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
-    ctx.fill();
-  }
-}
-
-let aliensToSpawnOnClear = 4;
-let asteroidsToSpawnOnClear = 50;
-
-const ALIEN_BULLET_SPEED = 7;
-const ALIEN_FIRE_DELAY = 50;
-const NUM_ALIENS = 4;
-
-function generateAliens() {
-  aliens = [];
-  for (let i = 0; i < NUM_ALIENS; i++) {
-    let side = Math.floor(Math.random() * 4);
-    let x, y;
-    switch (side) {
-      case 0:
-        x = Math.random() * WORLD_WIDTH;
-        y = -40;
-        break;
-      case 1:
-        x = WORLD_WIDTH + 40;
-        y = Math.random() * WORLD_HEIGHT;
-        break;
-      case 2:
-        x = Math.random() * WORLD_WIDTH;
-        y = WORLD_HEIGHT + 40;
-        break;
-      case 3:
-        x = -40;
-        y = Math.random() * WORLD_HEIGHT;
-        break;
-    }
-    const alienSize = 30; // 🔧 Adjust alien size
-    aliens.push({
-      x,
-      y,
-      angle: 0,
-      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-      health: 30,
-      radius: alienSize,
-    });
-  }
-}
-
-generateAliens();
-
-/**
- * Expand the random positions of civilians to be anywhere in the world
- * (instead of 0..100). This ensures they're not all stuck in one corner.
- */
-function generateCivilians(num = 5) {
-  civilians = [];
-  for (let i = 0; i < num; i++) {
-    civilians.push({
-      x: Math.random() * WORLD_WIDTH,
-      y: Math.random() * WORLD_HEIGHT,
-      dx: (Math.random() - 0.5) * 1.5,
-      dy: (Math.random() - 0.5) * 1.5,
-      radius: 40,
-      wanderTimer: Math.floor(Math.random() * 120 + 60),
-    });
-  }
-}
-
-// UFO spawning
-const UFO_FIRE_DELAY = 120; // frames between UFO shots
-const UFO_BULLET_SPEED = 6; // how fast the UFO laser travels
-function spawnUFO(count = 1) {
-  for (let i = 0; i < count; i++) {
-    const x = Math.random() * WORLD_WIDTH;
-    const y = Math.random() * WORLD_HEIGHT;
-    ufos.push({
-      x,
-      y,
-      dx: (Math.random() - 0.5) * 2,
-      dy: (Math.random() - 0.5) * 2,
-      radius: 40,
-      health: 50,
-      wanderTimer: 100,
-      fireCooldown: UFO_FIRE_DELAY,
-    });
-  }
-}
-
-let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
-let mouseThrusting = false;
-let isFiring = false;
-let autoplay = true;
-
-let bulletCooldown = 0;
-const BULLET_DELAY = 50;
-
-/********************************/
-/*        SHIP & MOVEMENT       */
-/********************************/
-// At the top, near your "ship" definition:
-const opponent = {
-  health: 100,
-  x: WORLD_WIDTH / 2 + 100, // Just place it near you initially
-  y: WORLD_HEIGHT / 2 - 100,
-  radius: 30,
-  angle: 0,
-  thrust: { x: 0, y: 0 },
-  rotation: 0,
-  fireCooldown: 0, // frames until next shot
-};
-
-const OPPONENT_BULLETS = [];
-const OPPONENT_BULLET_SPEED = 5;
-const OPPONENT_BULLET_LIFE = 500;
-const OPPONENT_FIRE_DELAY = 60; // frames between shots
-
+// Player Ship Object
 const ship = {
-  health: 100,
-  x: WORLD_WIDTH / 2,
-  y: WORLD_HEIGHT / 2,
-  radius: 30,
-  angle: 0,
-  rotation: 0,
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 20,
+  angle: 0, // radians
+  rotation: 0, // rotation speed
   thrusting: false,
   thrust: { x: 0, y: 0 },
+  color: 'white',
+  health: 100, // === [Ship Health Settings] ===
 };
 
+// === [Score Settings] ===
 let score = 0;
-let floatingTexts = [];
+
+// === [Bullet Settings] ===
+const BULLET_SPEED = 7;
+const BULLET_LIFE = 100; // frames
+const BULLET_COOLDOWN = 10; // frames between shots
+
+let bullets = [];
+let bulletCooldown = 0;
+
+// === [Asteroid Settings] ===
+const NUM_ASTEROIDS = 10;
+const ASTEROID_MIN_RADIUS = 20;
+const ASTEROID_MAX_RADIUS = 50;
+const ASTEROID_SPEED = 1.5;
+
+let asteroids = [];
+
+// === [Alien Settings] ===
+const NUM_ALIENS = 3;
+const ALIEN_RADIUS = 25;
+const ALIEN_SPEED = 1.2;
+const ALIEN_BULLET_SPEED = 5;
+const ALIEN_FIRE_DELAY = 100; // frames between shots
+
+let aliens = [];
+let alienBullets = [];
+
+// === [Opponent Settings] ===
+const OPPONENT_RADIUS = 25;
+const OPPONENT_SPEED = 1.8; // Note: OPPONENT_SPEED is defined but not used in the provided updateOpponent logic
+const OPPONENT_BULLET_SPEED = 5;
+const OPPONENT_FIRE_DELAY = 60; // frames between shots
+
+let opponent = {
+  x: WORLD_WIDTH / 2 + 200,
+  y: WORLD_HEIGHT / 2 + 200,
+  radius: OPPONENT_RADIUS,
+  angle: 0,
+  thrust: { x: 0, y: 0 },
+  health: 100,
+  fireCooldown: 0,
+};
+
+let opponentBullets = [];
+
+// === [Civilian and UFO Settings] ===
+const NUM_CIVILIANS = 5;
+const NUM_UFOS = 3;
+const CIVILIAN_RADIUS = 20;
+const UFO_RADIUS = 25;
+const UFO_SPEED = 2;
+const UFO_FIRE_DELAY = 120; // frames between shots
+const UFO_LASER_SPEED = 6;
+
+let civilians = [];
+let ufos = [];
+let ufoLasers = [];
+
+// === [Explosion Effects] ===
 let explosions = [];
 
-const BULLET_SPEED = 5;
-const BULLET_LIFE = 500;
-let bullets = [];
+// === [Floating Text Settings] ===
+let floatingTexts = [];
 
-const TURN_SPEED = Math.PI / 90;
-const THRUST_ACCEL = 0.02;
-const FRICTION = 0.99;
-const MAX_SPEED = 3;
-
-/********************************/
-/*       INPUT HANDLERS         */
-/********************************/
-document.addEventListener("keydown", keyDown);
-document.addEventListener("keyup", keyUp);
-
-function keyDown(e) {
-  switch (e.key) {
-    case "ArrowLeft":
-      ship.rotation = -TURN_SPEED;
-      break;
-    case "ArrowRight":
-      ship.rotation = TURN_SPEED;
-      break;
-    case "ArrowUp":
-      ship.thrusting = true;
-      break;
-    case " ":
-      isFiring = true;
-      break;
-    case "a":
-    case "A":
-      autoplay = !autoplay;
-      console.log("Autoplay:", autoplay);
-      break;
-  }
+// === [Create Floating Text] ===
+function createFloatingText(text, x, y, color = 'white') {
+  floatingTexts.push({
+    text,
+    x,
+    y,
+    alpha: 1,
+    dy: -0.5,
+    life: 60, // frames
+    color,
+  });
 }
 
-function keyUp(e) {
-  switch (e.key) {
-    case "ArrowLeft":
-    case "ArrowRight":
-      ship.rotation = 0;
-      break;
-    case "ArrowUp":
-      ship.thrusting = false;
-      break;
-    case " ":
-      isFiring = false;
-      break;
+// === [Draw Floating Texts] ===
+function updateFloatingTexts() {
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    const sx = ft.x - camera.x;
+    const sy = ft.y - camera.y;
+
+    ctx.save(); // Save context state
+    ctx.globalAlpha = ft.alpha;
+    ctx.fillStyle = ft.color;
+    ctx.font = '18px Arial';
+    ctx.fillText(ft.text, sx, sy);
+    ctx.restore(); // Restore context state
+
+    ft.y += ft.dy;         // Move upward
+    ft.alpha -= 0.015;     // Fade out
+    ft.life--;
+
+    if (ft.life <= 0 || ft.alpha <= 0) {
+      floatingTexts.splice(i, 1);
+    }
   }
+  // Reset global alpha outside the loop if it was changed inside
+  // ctx.globalAlpha = 1; // Resetting here might be redundant if using save/restore
 }
 
-// Mouse coordinates are screen-based. We convert them to world coords.
-canvas.addEventListener("mousemove", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
-  mouse.x = camera.x + sx;
-  mouse.y = camera.y + sy;
 
-  // Optionally rotate the ship to face mouse
-  ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
-});
-
-canvas.addEventListener("mousedown", (e) => {
-  if (e.button === 0) mouseThrusting = true;
-});
-
-canvas.addEventListener("mouseup", (e) => {
-  if (e.button === 0) mouseThrusting = false;
-});
-
-// Right click to shoot
-canvas.addEventListener("contextmenu", (e) => {
-  e.preventDefault();
-  shootBullet();
-});
-
-/********************************/
-/*         SHOOT BULLETS        */
-/********************************/
-function shootBullet() {
-  const bulletOffset = 10;
-  const numBullets = 1;
-  laserSound.currentTime = 0;
-  laserSound.play();
-  for (let i = 0; i < numBullets; i++) {
-    const offset = (i - (numBullets - 1) / 2) * bulletOffset;
-    const offsetX = Math.cos(ship.angle + Math.PI / 2) * offset;
-    const offsetY = Math.sin(ship.angle + Math.PI / 2) * offset;
-    bullets.push({
-      x: ship.x + Math.cos(ship.angle) * ship.radius + offsetX,
-      y: ship.y + Math.sin(ship.angle) * ship.radius + offsetY,
-      dx: Math.cos(ship.angle) * BULLET_SPEED,
-      dy: Math.sin(ship.angle) * BULLET_SPEED,
-      life: BULLET_LIFE,
-    });
-  }
-}
-
-/********************************/
-/*      UFO SHOOTING LOGIC      */
-/********************************/
-function ufoShoot(ufo) {
-  if (!ufo) return;
-  // Find the nearest civilian to shoot at
-  let nearestCivilian = null;
-  let minDist = Infinity;
-  for (const civ of civilians) {
-    const dist = distanceBetween(ufo.x, ufo.y, civ.x, civ.y);
-    if (dist < minDist) {
-      minDist = dist;
-      nearestCivilian = civ;
-    }
-  }
-  // If a civilian is within range, fire a laser bullet at them
-  if (nearestCivilian && minDist < 600) {
-    const angle = Math.atan2(
-      nearestCivilian.y - ufo.y,
-      nearestCivilian.x - ufo.x
-    );
-    ufoBullets.push({
-      x: ufo.x,
-      y: ufo.y,
-      dx: Math.cos(angle) * UFO_BULLET_SPEED,
-      dy: Math.sin(angle) * UFO_BULLET_SPEED,
-      life: BULLET_LIFE,
-    });
-    ufoLaserSound.currentTime = 0;
-    ufoLaserSound.play();
-  }
-}
-
-/********************************/
-/*           GAME LOOP          */
-/********************************/
-function update() {
-  // 1) Update logic in world space
-  ship.angle += ship.rotation;
-  // Thrust
-  if (autoplay) {
-    smartAutopilot();
-  } else {
-    // Always perform dodge logic (but skip hunt)
-    smartAutopilot(); // keeps the dodging logic
-
-    // Allow player-controlled thrust
-    if (mouseThrusting) {
-      ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
-      ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
-    } else {
-      // still apply friction even if not thrusting
-      ship.thrust.x *= FRICTION;
-      ship.thrust.y *= FRICTION;
-    }
-  }
-
-  capSpeed();
-  ship.x += ship.thrust.x;
-  ship.y += ship.thrust.y;
-
-  // Soft-bounce at world edges
-  const bounceDampening = 0.7; // lose 30% speed on bounce
-  const buffer = 10; // Keep ship slightly off the edge
-
-  if (ship.x < buffer) {
-    ship.x = buffer;
-    ship.thrust.x = Math.abs(ship.thrust.x) * bounceDampening;
-  }
-  if (ship.x > WORLD_WIDTH - buffer) {
-    ship.x = WORLD_WIDTH - buffer;
-    ship.thrust.x = -Math.abs(ship.thrust.x) * bounceDampening;
-  }
-  if (ship.y < buffer) {
-    ship.y = buffer;
-    ship.thrust.y = Math.abs(ship.thrust.y) * bounceDampening;
-  }
-  if (ship.y > WORLD_HEIGHT - buffer) {
-    ship.y = WORLD_HEIGHT - buffer;
-    ship.thrust.y = -Math.abs(ship.thrust.y) * bounceDampening;
-  }
-
-  // Update camera to follow ship
-  updateCamera();
-
-  // 2) Clear the canvas (the visible region)
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 3) Draw stars
-  drawStars();
-
-  // ... existing code for player ship, etc.
-
-  // 1) Opponent AI + Movement
-  opponentAutopilot();
-
-  // friction & max speed (if you want the same mechanics as player)
-  opponent.thrust.x *= 0.99; // friction
-  opponent.thrust.y *= 0.99;
-  // cap speed
-  const oppSpeed = Math.sqrt(opponent.thrust.x ** 2 + opponent.thrust.y ** 2);
-  const OPPONENT_MAX_SPEED = 3;
-  if (oppSpeed > OPPONENT_MAX_SPEED) {
-    opponent.thrust.x *= OPPONENT_MAX_SPEED / oppSpeed;
-    opponent.thrust.y *= OPPONENT_MAX_SPEED / oppSpeed;
-  }
-
-  opponent.x += opponent.thrust.x;
-  opponent.y += opponent.thrust.y;
-
-  // Decrease fireCooldown if > 0
-  if (opponent.fireCooldown > 0) {
-    opponent.fireCooldown--;
-  }
-
-  // 2) Opponent collision with world edges (optional bounce or clamp)
-  // Just an example bounce:
-  if (opponent.x < 0) {
-    opponent.x = 0;
-    opponent.thrust.x = -opponent.thrust.x * 0.7;
-  }
-  if (opponent.x > WORLD_WIDTH) {
-    opponent.x = WORLD_WIDTH;
-    opponent.thrust.x = -opponent.thrust.x * 0.7;
-  }
-  if (opponent.y < 0) {
-    opponent.y = 0;
-    opponent.thrust.y = -opponent.thrust.y * 0.7;
-  }
-  if (opponent.y > WORLD_HEIGHT) {
-    opponent.y = WORLD_HEIGHT;
-    opponent.thrust.y = -opponent.thrust.y * 0.7;
-  }
-
-  // 3) Opponent bullet movement & collision
-  for (let i = OPPONENT_BULLETS.length - 1; i >= 0; i--) {
-    const b = OPPONENT_BULLETS[i];
-    b.x += b.dx;
-    b.y += b.dy;
-    b.life--;
-    // remove if out of life or out of bounds
-    if (
-      b.life <= 0 ||
-      b.x < 0 ||
-      b.x > WORLD_WIDTH ||
-      b.y < 0 ||
-      b.y > WORLD_HEIGHT
-    ) {
-      OPPONENT_BULLETS.splice(i, 1);
-      continue;
-    }
-
-    // Check collision with player's ship
-    if (distanceBetween(b.x, b.y, ship.x, ship.y) < ship.radius) {
-      ship.health -= 10;
-      createFloatingText("-10", ship.x, ship.y, "red");
-      explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
-      shipHitSound.currentTime = 0;
-      shipHitSound.play();
-      OPPONENT_BULLETS.splice(i, 1);
-
-      if (ship.health <= 0) {
-        ship.health = 100;
-        createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
-      }
-      continue;
-    }
-  }
-
-  // 4) Draw Opponent
-  drawOpponent();
-
-  // 5) Draw Opponent bullets
-  for (let i = 0; i < OPPONENT_BULLETS.length; i++) {
-    const b = OPPONENT_BULLETS[i];
-    const sx = b.x - camera.x;
-    const sy = b.y - camera.y;
-    const size = 40;
-
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(bulletImg, -size / 2, -size / 2, size, size);
-    ctx.restore();
-  }
-
-  // ... continue with existing code for UFO, aliens, asteroids, drawing
-
-  // --- Update & Draw Civilians (with UFO bullet avoidance) ---
-  for (const civilian of civilians) {
-    // Avoid nearby UFO bullets
-    let avoidanceX = 0,
-      avoidanceY = 0,
-      avoidCount = 0;
-    for (const bullet of ufoBullets) {
-      const d = distanceBetween(bullet.x, bullet.y, civilian.x, civilian.y);
-      if (d < 150) {
-        // if a UFO bullet is within 150px
-        avoidanceX += (civilian.x - bullet.x) / d;
-        avoidanceY += (civilian.y - bullet.y) / d;
-        avoidCount++;
-      }
-    }
-    if (avoidCount > 0) {
-      civilian.dx += avoidanceX * 0.5;
-      civilian.dy += avoidanceY * 0.5;
-    }
-    // Move civilian
-    civilian.x += civilian.dx;
-    civilian.y += civilian.dy;
-    civilian.wanderTimer--;
-    if (civilian.wanderTimer <= 0) {
-      civilian.dx = (Math.random() - 0.5) * 1.5;
-      civilian.dy = (Math.random() - 0.5) * 1.5;
-      civilian.wanderTimer = Math.floor(Math.random() * 120 + 60);
-    }
-    // Clamp to world edges
-    if (civilian.x < 0 || civilian.x > WORLD_WIDTH) civilian.dx *= -1;
-    if (civilian.y < 0 || civilian.y > WORLD_HEIGHT) civilian.dy *= -1;
-    const sx = civilian.x - camera.x;
-    const sy = civilian.y - camera.y;
-    if (isOnCamera(civilian)) {
-      const size = civilian.radius * 2;
-      ctx.drawImage(civilianImg, sx - size / 2, sy - size / 2, size, size);
-    }
-  }
-
-  // --- Update & Draw UFO (now hunting civilians) ---
-  for (let i = ufos.length - 1; i >= 0; i--) {
-    const ufo = ufos[i];
-
-    // === Movement Logic ===
-    if (civilians.length > 0) {
-      let nearest = null;
-      let minDist = Infinity;
-      for (const civ of civilians) {
-        const d = distanceBetween(ufo.x, ufo.y, civ.x, civ.y);
-        if (d < minDist) {
-          minDist = d;
-          nearest = civ;
-        }
-      }
-      if (nearest) {
-        const angle = Math.atan2(nearest.y - ufo.y, nearest.x - ufo.x);
-        const speed = 2;
-        ufo.dx = Math.cos(angle) * speed;
-        ufo.dy = Math.sin(angle) * speed;
-      }
-    } else {
-      ufo.wanderTimer--;
-      if (ufo.wanderTimer <= 0) {
-        ufo.dx = (Math.random() - 0.5) * 2;
-        ufo.dy = (Math.random() - 0.5) * 2;
-        ufo.wanderTimer = 100 + Math.random() * 100;
-      }
-    }
-
-    ufo.x += ufo.dx;
-    ufo.y += ufo.dy;
-
-    // Bounce at edges
-    if (ufo.x < 0 || ufo.x > WORLD_WIDTH) ufo.dx *= -1;
-    if (ufo.y < 0 || ufo.y > WORLD_HEIGHT) ufo.dy *= -1;
-
-    // Fire
-    ufo.fireCooldown--;
-    if (ufo.fireCooldown <= 0) {
-      ufoShoot(ufo);
-      ufo.fireCooldown = UFO_FIRE_DELAY;
-    }
-
-    // Draw UFO
-    const sx = ufo.x - camera.x;
-    const sy = ufo.y - camera.y;
-    if (isOnCamera(ufo)) {
-      ctx.drawImage(ufoImg, sx - 40, sy - 40, 80, 80);
-    }
-  }
-
-  // --- Draw the player's ship ---
-  drawShip(ship.x, ship.y, ship.angle);
-
-  // --- Move and Draw Asteroids ---
-  asteroids.forEach((asteroid) => {
-    asteroid.x += Math.cos(asteroid.angle) * asteroid.speed;
-    asteroid.y += Math.sin(asteroid.angle) * asteroid.speed;
-    if (asteroid.x < 0) asteroid.x = WORLD_WIDTH;
-    if (asteroid.x > WORLD_WIDTH) asteroid.x = 0;
-    if (asteroid.y < 0) asteroid.y = WORLD_HEIGHT;
-    if (asteroid.y > WORLD_HEIGHT) asteroid.y = 0;
-    asteroid.currentRotation += asteroid.rotation;
-    const sx = asteroid.x - camera.x;
-    const sy = asteroid.y - camera.y;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(asteroid.currentRotation);
-    const size = asteroid.radius * 2;
-    ctx.drawImage(asteroidImg, -size / 2, -size / 2, size, size);
-    ctx.restore();
+function createExplosion(x, y, size = 40) {
+  explosions.push({
+    x,
+    y,
+    size,
+    life: 30, // frames
   });
 
-  // --- Update & Draw Aliens (with bullet avoidance) ---
-  aliens.forEach((alien, i) => {
-    // 1) Separation from other aliens
-    aliens.forEach((otherAlien, j) => {
-      if (i !== j) {
-        const dist = distanceBetween(
-          alien.x,
-          alien.y,
-          otherAlien.x,
-          otherAlien.y
-        );
-        if (dist < 40) {
-          // push them apart
-          const pushX = (alien.x - otherAlien.x) / dist;
-          const pushY = (alien.y - otherAlien.y) / dist;
-          alien.x += pushX;
-          alien.y += pushY;
-        }
-      }
-    });
+  explosionSound.currentTime = 0;
+  explosionSound.play();
+}
 
-    // 2) Dodge nearby player bullets
-    const DODGE_RADIUS = 100;
-    const DODGE_FORCE = 0.6; // Increased for quicker dodge
-    let bulletDodge = { x: 0, y: 0 };
-
-    for (const b of bullets) {
-      const dxB = alien.x - b.x;
-      const dyB = alien.y - b.y;
-      const distB = Math.sqrt(dxB * dxB + dyB * dyB);
-      if (distB < DODGE_RADIUS) {
-        // push away from bullet
-        const awayX = dxB / distB;
-        const awayY = dyB / distB;
-        // Weighted by how close the bullet is
-        bulletDodge.x += awayX * (1 - distB / DODGE_RADIUS);
-        bulletDodge.y += awayY * (1 - distB / DODGE_RADIUS);
-      }
-    }
-    // Apply the dodge offset
-    alien.x += bulletDodge.x * DODGE_FORCE;
-    alien.y += bulletDodge.y * DODGE_FORCE;
-
-    // 3) Move toward the ship if not too close
-    const dx = ship.x - alien.x;
-    const dy = ship.y - alien.y;
-    alien.angle = Math.atan2(dy, dx);
-    const distToShip = Math.sqrt(dx * dx + dy * dy);
-    const stopDistance = 120;
-    if (distToShip > stopDistance) {
-      const speed = 1.2;
-      alien.x += Math.cos(alien.angle) * speed;
-      alien.y += Math.sin(alien.angle) * speed;
-    }
-
-    // Wrap-around or bounce at edges if you prefer:
-    if (alien.x < 0) alien.x = WORLD_WIDTH;
-    if (alien.x > WORLD_WIDTH) alien.x = 0;
-    if (alien.y < 0) alien.y = WORLD_HEIGHT;
-    if (alien.y > WORLD_HEIGHT) alien.y = 0;
-
-    // 4) Alien firing logic
-    alien.fireCooldown--;
-    if (alien.fireCooldown <= 0 && isOnCamera(alien)) {
-      alienBullets.push({
-        x: alien.x,
-        y: alien.y,
-        dx: Math.cos(alien.angle) * ALIEN_BULLET_SPEED,
-        dy: Math.sin(alien.angle) * ALIEN_BULLET_SPEED,
-        life: BULLET_LIFE,
-      });
-      alien.fireCooldown = ALIEN_FIRE_DELAY;
-      alienLaserSound.currentTime = 0;
-      alienLaserSound.play();
-    }
-
-    // 5) Draw the alien
-    const sx = alien.x - camera.x;
-    const sy = alien.y - camera.y;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(alien.angle + Math.PI / 2);
-    const alienSize = alien.radius * 2;
-    ctx.drawImage(
-      alienImg,
-      -alienSize / 2,
-      -alienSize / 2,
-      alienSize,
-      alienSize
-    );
-    ctx.restore();
-  });
-
-  // --- Update & Draw Alien Bullets ---
-  for (let i = alienBullets.length - 1; i >= 0; i--) {
-    const b = alienBullets[i];
-    b.x += b.dx;
-    b.y += b.dy;
-    b.life--;
-    if (
-      b.life <= 0 ||
-      b.x < 0 ||
-      b.x > WORLD_WIDTH ||
-      b.y < 0 ||
-      b.y > WORLD_HEIGHT
-    ) {
-      alienBullets.splice(i, 1);
-      continue;
-    }
-    const sx = b.x - camera.x;
-    const sy = b.y - camera.y;
-    const alienBulletSize = 20;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(
-      alienBulletImg,
-      -alienBulletSize / 2,
-      -alienBulletSize / 2,
-      alienBulletSize,
-      alienBulletSize
-    );
-    ctx.restore();
-    if (distanceBetween(b.x, b.y, ship.x, ship.y) < ship.radius) {
-      ship.health -= 10;
-      alienBullets.splice(i, 1);
-      createFloatingText("-10", ship.x, ship.y, "red");
-      explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
-      shipHitSound.currentTime = 0;
-      shipHitSound.play();
-      if (ship.health <= 0) {
-        ship.health = 100;
-        createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
-      }
-    }
-  }
-
-  // --- Update & Draw UFO Bullets (which may hit civilians) ---
-  for (let i = ufoBullets.length - 1; i >= 0; i--) {
-    const b = ufoBullets[i];
-    b.x += b.dx;
-    b.y += b.dy;
-    b.life--;
-    if (
-      b.life <= 0 ||
-      b.x < 0 ||
-      b.x > WORLD_WIDTH ||
-      b.y < 0 ||
-      b.y > WORLD_HEIGHT
-    ) {
-      ufoBullets.splice(i, 1);
-      continue;
-    }
-    const sx = b.x - camera.x;
-    const sy = b.y - camera.y;
-    const laserSize = 25;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.drawImage(
-      ufoLaserImg,
-      -laserSize / 2,
-      -laserSize / 2,
-      laserSize,
-      laserSize
-    );
-    ctx.restore();
-    // Check collision with civilians
-    for (let j = civilians.length - 1; j >= 0; j--) {
-      const civ = civilians[j];
-      if (distanceBetween(b.x, b.y, civ.x, civ.y) < civ.radius) {
-        createFloatingText("Civilian down!", civ.x, civ.y, "red");
-        explosions.push({ x: civ.x, y: civ.y, size: 40, life: 30 });
-        explosionSound.currentTime = 0;
-        explosionSound.play();
-        civilians.splice(j, 1);
-        ufoBullets.splice(i, 1);
-        break;
-      }
-    }
-  }
-
-  // --- Move and Draw Player Bullets ---
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    // Bullet vs. Alien collision
-    for (let k = aliens.length - 1; k >= 0; k--) {
-      const alien = aliens[k];
-      if (distanceBetween(b.x, b.y, alien.x, alien.y) < alien.radius) {
-        bullets.splice(i, 1);
-        alien.health -= 50;
-        createFloatingText("-10", alien.x, alien.y, "orange");
-        if (alien.health <= 0) {
-          explosions.push({ x: alien.x, y: alien.y, size: 40, life: 30 });
-          createFloatingText("Alien Down!", alien.x, alien.y - 10, "red");
-          explosionSound.currentTime = 0;
-          explosionSound.play();
-          aliens.splice(k, 1);
-          score += 150;
-        }
-        break;
-      }
-    }
-    // Bullet vs. UFO collision
-    for (let j = ufos.length - 1; j >= 0; j--) {
-      const u = ufos[j];
-      if (distanceBetween(b.x, b.y, u.x, u.y) < u.radius) {
-        bullets.splice(i, 1);
-        u.health -= 10;
-        createFloatingText("-10", u.x, u.y, "orange");
-
-        if (u.health <= 0) {
-          explosions.push({ x: u.x, y: u.y, size: 50, life: 30 });
-          createFloatingText("UFO Destroyed!", u.x, u.y - 20, "red");
-          explosionSound.currentTime = 0;
-          explosionSound.play();
-          score += 500;
-          ufos.splice(j, 1);
-        }
-        break;
-      }
-    }
-
-    // Bullet vs. Opponent collision
-    if (distanceBetween(b.x, b.y, opponent.x, opponent.y) < opponent.radius) {
-      bullets.splice(i, 1);
-      opponent.health -= 20;
-      createFloatingText("-20", opponent.x, opponent.y, "orange");
-      explosions.push({ x: opponent.x, y: opponent.y, size: 50, life: 30 });
-      explosionSound.currentTime = 0;
-      explosionSound.play();
-
-      if (opponent.health <= 0) {
-        createFloatingText(
-          "Opponent Destroyed!",
-          opponent.x,
-          opponent.y - 20,
-          "red"
-        );
-        // Optionally respawn or remove opponent
-        opponent.health = 100;
-        opponent.x = WORLD_WIDTH / 2 + 100;
-        opponent.y = WORLD_HEIGHT / 2 - 100;
-        opponent.thrust = { x: 0, y: 0 };
-      }
-
-      continue; // skip drawing this bullet
-    }
-
-    b.x += b.dx;
-    b.y += b.dy;
-    b.life--;
-    if (
-      b.life <= 0 ||
-      b.x < 0 ||
-      b.x > WORLD_WIDTH ||
-      b.y < 0 ||
-      b.y > WORLD_HEIGHT
-    ) {
-      bullets.splice(i, 1);
-      continue;
-    }
-    const sx = b.x - camera.x;
-    const sy = b.y - camera.y;
-    const size = 40;
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.rotate(Math.atan2(b.dy, b.dx) + Math.PI / 1);
-    ctx.drawImage(bulletImg, -size / 2, -size / 2, size, size);
-    ctx.restore();
-  }
-
-  // --- Bullet vs. Asteroid collisions ---
-  for (let i = asteroids.length - 1; i >= 0; i--) {
-    const asteroid = asteroids[i];
-    for (let j = bullets.length - 1; j >= 0; j--) {
-      const bullet = bullets[j];
-      if (
-        distanceBetween(bullet.x, bullet.y, asteroid.x, asteroid.y) <
-        asteroid.radius
-      ) {
-        bullets.splice(j, 1);
-        explosions.push({
-          x: asteroid.x,
-          y: asteroid.y,
-          size: asteroid.radius * 1.5,
-          life: 30,
-        });
-        asteroidExplosionSound.currentTime = 0;
-        asteroidExplosionSound.play();
-        if (asteroid.radius > 20) {
-          const newRadius = asteroid.radius / 2;
-          asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-          asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-          score += 100;
-          createFloatingText("+100", asteroid.x, asteroid.y, "lime");
-        } else {
-          score += 50;
-          createFloatingText("+50", asteroid.x, asteroid.y, "lightblue");
-        }
-        asteroids.splice(i, 1);
-        break;
-      }
-    }
-  }
-
-  // --- Asteroid vs. Ship collisions ---
-  for (let i = 0; i < asteroids.length; i++) {
-    const asteroid = asteroids[i];
-    if (
-      distanceBetween(asteroid.x, asteroid.y, ship.x, ship.y) <
-      asteroid.radius + ship.radius
-    ) {
-      ship.health -= 5;
-      console.log(`💥 Ship Hit! Health: ${ship.health}`);
-      explosions.push({ x: ship.x, y: ship.y, size: 40, life: 30 });
-      explosions.push({
-        x: asteroid.x,
-        y: asteroid.y,
-        size: asteroid.radius * 1.5,
-        life: 30,
-      });
-      asteroidExplosionSound.currentTime = 0;
-      asteroidExplosionSound.play();
-      if (asteroid.radius > 20) {
-        const newRadius = asteroid.radius / 2;
-        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-      }
-      asteroids.splice(i, 1);
-      if (ship.health <= 0) {
-        ship.health = 100;
-        createFloatingText("💖 Respawned!", ship.x, ship.y - 20, "yellow");
-      }
-      break;
-    }
-  }
-
-  // --- Asteroid vs. Asteroid collisions ---
-  {
-    const collidedAsteroids = new Set();
-    for (let i = 0; i < asteroids.length; i++) {
-      for (let j = i + 1; j < asteroids.length; j++) {
-        const a1 = asteroids[i];
-        const a2 = asteroids[j];
-        const dist = distanceBetween(a1.x, a1.y, a2.x, a2.y);
-        if (dist < a1.radius + a2.radius) {
-          collidedAsteroids.add(i);
-          collidedAsteroids.add(j);
-        }
-      }
-    }
-    const collidedIndicesDesc = Array.from(collidedAsteroids).sort(
-      (a, b) => b - a
-    );
-    collidedIndicesDesc.forEach((index) => {
-      if (index >= asteroids.length) return;
-      const asteroid = asteroids[index];
-      explosions.push({
-        x: asteroid.x,
-        y: asteroid.y,
-        size: asteroid.radius * 1.5,
-        life: 30,
-      });
-      asteroidExplosionSound.currentTime = 0;
-      asteroidExplosionSound.play();
-      if (asteroid.radius > 20) {
-        const newRadius = asteroid.radius / 2;
-        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-        asteroids.push(createAsteroid(asteroid.x, asteroid.y, newRadius));
-      }
-      asteroids.splice(index, 1);
-    });
-  }
-
-  // --- Alien wave clearing logic ---
-  if (aliens.length === 0 && !gameResetting) {
-    gameResetting = true;
-    createFloatingText(
-      "🎉 All Aliens Defeated!",
-      ship.x - 60,
-      ship.y - 40,
-      "lime"
-    );
-    setTimeout(() => {
-      for (let i = 0; i < aliensToSpawnOnClear; i++) {
-        let side = Math.floor(Math.random() * 4);
-        let x, y;
-        switch (side) {
-          case 0:
-            x = Math.random() * WORLD_WIDTH;
-            y = -40;
-            break;
-          case 1:
-            x = WORLD_WIDTH + 40;
-            y = Math.random() * WORLD_HEIGHT;
-            break;
-          case 2:
-            x = Math.random() * WORLD_WIDTH;
-            y = WORLD_HEIGHT + 40;
-            break;
-          case 3:
-            x = -40;
-            y = Math.random() * WORLD_HEIGHT;
-            break;
-        }
-        aliens.push({
-          x,
-          y,
-          angle: 0,
-          fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-          health: 30,
-          radius: 20,
-        });
-      }
-      for (let i = 0; i < asteroidsToSpawnOnClear; i++) {
-        const x = Math.random() * WORLD_WIDTH;
-        const y = Math.random() * WORLD_HEIGHT;
-        asteroids.push(createAsteroid(x, y));
-      }
-      gameResetting = false;
-    }, 1500);
-  }
-
-  // --- Draw Explosions ---
+// === [Draw Explosions] ===
+function updateExplosions() {
   for (let i = explosions.length - 1; i >= 0; i--) {
     const exp = explosions[i];
-    const alpha = exp.life / 30;
+    const alpha = exp.life / 30; // fade out effect
     const sx = exp.x - camera.x;
     const sy = exp.y - camera.y;
+
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.drawImage(
-      explosionImg,
-      sx - exp.size / 2,
-      sy - exp.size / 2,
-      exp.size,
-      exp.size
-    );
+    ctx.fillStyle = 'orange';
+    ctx.beginPath();
+    ctx.arc(sx, sy, exp.size * (1 - alpha * 0.5), 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
+
     exp.life--;
-    if (exp.life <= 0) explosions.splice(i, 1);
+    if (exp.life <= 0) {
+      explosions.splice(i, 1);
+    }
   }
-  ctx.globalAlpha = 1;
-
-  // Auto-fire if holding space
-  if (isFiring && bulletCooldown <= 0) {
-    shootBullet();
-    bulletCooldown = BULLET_DELAY;
-  } else if (bulletCooldown > 0) {
-    bulletCooldown--;
-  }
-
-  drawHealthBar();
-  drawScore();
-  drawFloatingTexts();
-
-  updateLoop = requestAnimationFrame(update);
 }
 
-function drawShip(x, y, angle) {
-  const sx = x - camera.x;
-  const sy = y - camera.y;
-  const size = ship.radius * 2;
-  ctx.save();
-  ctx.translate(sx, sy);
-  ctx.rotate(angle + Math.PI / 2);
-  ctx.drawImage(shipImg, -size / 2, -size / 2, size, size);
-  ctx.restore();
-}
-
-/********************************/
-/*         ASTEROIDS ETC.       */
-/********************************/
-const NUM_ASTEROIDS = 50;
-function getRandomAsteroidSize() {
-  return Math.random() * 30 + 20;
-}
-function getRandomAsteroidSpeed() {
-  return Math.random() * 3 + 1;
-}
-let asteroids = [];
-function createAsteroid(x, y, radius = getRandomAsteroidSize()) {
+// Create a single asteroid
+function createAsteroid(x, y, radius = randomRange(ASTEROID_MIN_RADIUS, ASTEROID_MAX_RADIUS)) {
   const angle = Math.random() * Math.PI * 2;
   return {
     x,
     y,
     radius,
+    speed: ASTEROID_SPEED * (Math.random() * 0.5 + 0.5), // randomize speed a bit
     angle,
-    speed: getRandomAsteroidSpeed(),
-    rotation: Math.random() * 0.02 - 0.01,
+    rotation: Math.random() * 0.05 - 0.025, // slight spin
     currentRotation: 0,
   };
 }
+
+// Spawn multiple asteroids
 function generateAsteroids() {
   asteroids = [];
   for (let i = 0; i < NUM_ASTEROIDS; i++) {
@@ -1163,310 +229,1174 @@ function generateAsteroids() {
     asteroids.push(createAsteroid(x, y));
   }
 }
-generateAsteroids();
 
-/********************************/
-/*       HELPER FUNCTIONS       */
-/********************************/
-function distanceBetween(x1, y1, x2, y2) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
+// Helper random function
+function randomRange(min, max) {
+  return Math.random() * (max - min) + min;
 }
 
-function drawHealthBar() {
-  const barWidth = 200;
-  const barHeight = 20;
-  const healthRatio = Math.max(ship.health, 0) / 100;
-  ctx.fillStyle = "gray";
-  ctx.fillRect(20, 20, barWidth, barHeight);
-  ctx.fillStyle = healthRatio > 0.3 ? "limegreen" : "red";
-  ctx.fillRect(20, 20, barWidth * healthRatio, barHeight);
-  ctx.strokeStyle = "white";
-  ctx.strokeRect(20, 20, barWidth, barHeight);
-}
+// Controls
+const TURN_SPEED = Math.PI / 90; // radians per frame
+const THRUST_ACCEL = 0.1;
+const FRICTION = 0.99;
+const MAX_SPEED = 5;
 
-function drawScore() {
-  ctx.fillStyle = "white";
-  ctx.font = "18px sans-serif";
-  ctx.fillText("Score: " + score, 20, 60);
-}
-
-function createFloatingText(text, x, y, color = "white") {
-  floatingTexts.push({
-    text,
-    x,
-    y,
-    alpha: 1,
-    dy: -0.5,
-    life: 60,
-    color,
-  });
-}
-
-function drawFloatingTexts() {
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    const ft = floatingTexts[i];
-    const sx = ft.x - camera.x;
-    const sy = ft.y - camera.y;
-    if (sx >= 0 && sy >= 0 && sx < camera.w && sy < camera.h) {
-      ctx.globalAlpha = ft.alpha;
-      ctx.fillStyle = ft.color;
-      ctx.font = "18px sans-serif";
-      ctx.fillText(ft.text, sx, sy);
-    }
-    ft.y += ft.dy;
-    ft.alpha -= 0.015;
-    ft.life--;
-    if (ft.life <= 0 || ft.alpha <= 0) {
-      floatingTexts.splice(i, 1);
-    }
+// Input Handlers
+document.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case 'ArrowLeft':
+      ship.rotation = -TURN_SPEED;
+      break;
+    case 'ArrowRight':
+      ship.rotation = TURN_SPEED;
+      break;
+    case 'ArrowUp':
+      ship.thrusting = true;
+      break;
+    case ' ': // Spacebar
+      if (bulletCooldown <= 0) {
+        shootBullet();
+        bulletCooldown = BULLET_COOLDOWN;
+      }
+      break;
   }
-  ctx.globalAlpha = 1;
-}
-
-document.getElementById("huntModeBtn").addEventListener("click", () => {
-  autoplay = !autoplay;
-  const btn = document.getElementById("huntModeBtn");
-  btn.textContent = autoplay ? "🔫 Hunt Mode: ON" : "🛑 Hunt Mode: OFF";
-  createFloatingText(
-    autoplay ? "🧠 Autopilot ON (Hunting Aliens)" : "🕹️ Manual Mode",
-    ship.x,
-    ship.y - 50,
-    autoplay ? "lime" : "orange"
-  );
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("huntModeBtn");
-  btn.textContent = autoplay ? "🔫 Hunt Mode: ON" : "🛑 Hunt Mode: OFF";
+document.addEventListener('keyup', (e) => {
+  switch (e.key) {
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      ship.rotation = 0;
+      break;
+    case 'ArrowUp':
+      ship.thrusting = false;
+      break;
+  }
 });
 
-document.getElementById("restartBtn").addEventListener("click", () => {
-  stopGameLoop();
-  ship.health = 100;
-  ship.x = WORLD_WIDTH / 2;
-  ship.y = WORLD_HEIGHT / 2;
-  ship.angle = 0;
-  ship.rotation = 0;
-  ship.thrust = { x: 0, y: 0 };
-  score = 0;
-  bullets = [];
-  asteroids = [];
-  floatingTexts = [];
-  explosions = [];
-  aliens = [];
-  alienBullets = [];
-  ufoBullets = [];
-  ufo = null;
-  generateAliens();
-  generateAsteroids();
-  generateCivilians();
-  spawnUFO(NUM_UFOS);
-  document.getElementById("restartBtn").style.display = "none";
-  updateLoop = requestAnimationFrame(update);
+// === [Joystick Settings] ===
+let isDraggingJoystick = false;
+let joystickCenter = { x: 60, y: 60 }; // Center inside container (120px)
+let joystickCurrent = { x: 60, y: 60 };
+
+const joystickContainer = document.getElementById('joystickContainer');
+const joystick = document.getElementById('joystick');
+
+// === [Touch Events] ===
+joystickContainer.addEventListener('touchstart', (e) => {
+  isDraggingJoystick = true;
+  updateJoystickPosition(e.touches[0]);
+}, { passive: false });
+
+joystickContainer.addEventListener('touchmove', (e) => {
+  if (isDraggingJoystick) {
+    updateJoystickPosition(e.touches[0]);
+  }
+}, { passive: false });
+
+joystickContainer.addEventListener('touchend', () => {
+  if (isDraggingJoystick) {
+    isDraggingJoystick = false;
+    resetJoystick();
+  }
 });
 
-function capSpeed() {
-  const speed = Math.sqrt(ship.thrust.x ** 2 + ship.thrust.y ** 2);
-  if (speed > MAX_SPEED) {
-    ship.thrust.x *= MAX_SPEED / speed;
-    ship.thrust.y *= MAX_SPEED / speed;
+// === [Mouse Events] (for testing on desktop) ===
+joystickContainer.addEventListener('mousedown', (e) => {
+  isDraggingJoystick = true;
+  updateJoystickPosition(e);
+});
+
+joystickContainer.addEventListener('mousemove', (e) => {
+  if (isDraggingJoystick) {
+    updateJoystickPosition(e);
+  }
+});
+
+joystickContainer.addEventListener('mouseup', () => {
+  if (isDraggingJoystick) {
+    isDraggingJoystick = false;
+    resetJoystick();
+  }
+});
+
+joystickContainer.addEventListener('mouseleave', () => {
+  if (isDraggingJoystick) {
+    isDraggingJoystick = false;
+    resetJoystick();
+  }
+});
+
+// === [Update Joystick Visual and Ship Control] ===
+function updateJoystickPosition(event) {
+  const rect = joystickContainer.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  const dx = x - joystickCenter.x;
+  const dy = y - joystickCenter.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const maxDistance = joystickContainer.offsetWidth / 2 - joystick.offsetWidth / 2;
+
+  let limitedX = dx;
+  let limitedY = dy;
+
+  // Cap joystick knob movement
+  if (distance > maxDistance) {
+    limitedX = (dx / distance) * maxDistance;
+    limitedY = (dy / distance) * maxDistance;
+  }
+
+  joystick.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+
+  // Only move ship if not in autopilot
+  if (!autopilot) {
+    const angle = Math.atan2(limitedY, limitedX);
+
+    // Point ship in direction
+    ship.angle = angle;
+
+    // Apply thrust
+    const JOYSTICK_THRUST = 0.03; // Adjust thrust force
+    ship.thrust.x += Math.cos(angle) * JOYSTICK_THRUST;
+    ship.thrust.y += Math.sin(angle) * JOYSTICK_THRUST;
+    ship.thrusting = true;
   }
 }
 
+// === [Reset Joystick] ===
+function resetJoystick() {
+  joystick.style.transform = `translate(0px, 0px)`;
+  if (!autopilot) {
+    ship.thrusting = false;
+  }
+}
+
+
+// === [Handle Autopilot Button] ===
+document.getElementById('autopilotBtn').addEventListener('click', () => {
+  autopilot = !autopilot;
+  document.getElementById('autopilotBtn').textContent = autopilot ? '🧠 Autopilot: ON' : '🕹️ Autopilot: OFF';
+
+  // Hide or show joystick based on autopilot
+  joystickContainer.style.display = autopilot ? 'none' : 'flex';
+});
+
+// Update camera to center on ship
+function updateCamera() {
+  camera.x = ship.x - camera.w / 2;
+  camera.y = ship.y - camera.h / 2;
+
+  // Clamp camera inside world
+  if (camera.x < 0) camera.x = 0;
+  if (camera.y < 0) camera.y = 0;
+  if (camera.x + camera.w > WORLD_WIDTH) camera.x = WORLD_WIDTH - camera.w;
+  if (camera.y + camera.h > WORLD_HEIGHT) camera.y = WORLD_HEIGHT - camera.h;
+}
+
+// === [Smart Autopilot Logic] ===
 function smartAutopilot() {
   const DODGE_RADIUS = 100;
   const DODGE_FORCE = 0.15;
-  const bulletDodgeX = { x: 0, y: 0 };
-  const asteroidDodgeX = { x: 0, y: 0 };
+  let dodge = { x: 0, y: 0 };
 
-  // === Dodge Enemy Bullets ===
-  const incomingBullets = [...alienBullets, ...ufoBullets, ...OPPONENT_BULLETS];
+  // 1. Dodge incoming bullets
+  const incomingBullets = [...alienBullets]; // Use a copy to avoid issues if array is modified
   for (const bullet of incomingBullets) {
     const dx = ship.x - bullet.x;
     const dy = ship.y - bullet.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < DODGE_RADIUS) {
-      const awayX = dx / dist;
-      const awayY = dy / dist;
-      bulletDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
-      bulletDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
+      // Calculate repulsion force, stronger when closer
+      const repelForce = (1 - dist / DODGE_RADIUS);
+      dodge.x += (dx / dist) * repelForce;
+      dodge.y += (dy / dist) * repelForce;
     }
   }
 
-  // === Dodge Asteroids ===
-  for (const asteroid of asteroids) {
-    const dx = ship.x - asteroid.x;
-    const dy = ship.y - asteroid.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < DODGE_RADIUS) {
-      const awayX = dx / dist;
-      const awayY = dy / dist;
-      asteroidDodgeX.x += awayX * (1 - dist / DODGE_RADIUS);
-      asteroidDodgeX.y += awayY * (1 - dist / DODGE_RADIUS);
-    }
+  // Normalize dodge vector and apply force
+  const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+  if (dodgeMag > 0) {
+    // Apply a scaled dodge force
+    dodge.x = (dodge.x / dodgeMag) * DODGE_FORCE;
+    dodge.y = (dodge.y / dodgeMag) * DODGE_FORCE;
+
+    ship.thrust.x += dodge.x;
+    ship.thrust.y += dodge.y;
+
+    // Optional: Face dodge direction (can make movement jerky)
+    // ship.angle = Math.atan2(dodge.y, dodge.x);
   }
 
-  // Combine dodge vectors
-  const totalDodge = {
-    x: bulletDodgeX.x + asteroidDodgeX.x,
-    y: bulletDodgeX.y + asteroidDodgeX.y,
-  };
+  // 2. Hunt nearest alien (only if not actively dodging)
+  if (dodgeMag <= 0) { // Prioritize dodging
+      let nearestAlien = null;
+      let minDist = Infinity;
 
-  // Normalize dodge direction
-  const magnitude = Math.sqrt(totalDodge.x ** 2 + totalDodge.y ** 2);
-  if (magnitude > 0) {
-    const dodgeX = (totalDodge.x / magnitude) * DODGE_FORCE;
-    const dodgeY = (totalDodge.y / magnitude) * DODGE_FORCE;
-    ship.thrust.x += dodgeX;
-    ship.thrust.y += dodgeY;
-    ship.angle = Math.atan2(dodgeY, dodgeX);
-  }
-
-  // === Hunt Nearest Target (Alien or Opponent) ===
-  if (autoplay) {
-    let nearestTarget = opponent;
-    let minDist = distanceBetween(ship.x, ship.y, opponent.x, opponent.y);
-
-    for (const alien of aliens) {
-      const dist = distanceBetween(ship.x, ship.y, alien.x, alien.y);
-      if (dist < minDist) {
-        minDist = dist;
-        nearestTarget = alien;
-      }
-    }
-
-    if (nearestTarget) {
-      const dx = nearestTarget.x - ship.x;
-      const dy = nearestTarget.y - ship.y;
-      const angleToTarget = Math.atan2(dy, dx);
-
-      ship.angle = angleToTarget;
-
-      if (isOnCamera(nearestTarget) && bulletCooldown <= 0) {
-        shootBullet();
-        bulletCooldown = BULLET_DELAY;
+      for (const alien of aliens) {
+          const d = Math.sqrt((alien.x - ship.x) ** 2 + (alien.y - ship.y) ** 2);
+          if (d < minDist) {
+              minDist = d;
+              nearestAlien = alien;
+          }
       }
 
-      if (minDist > 150) {
-        ship.thrust.x += Math.cos(angleToTarget) * THRUST_ACCEL;
-        ship.thrust.y += Math.sin(angleToTarget) * THRUST_ACCEL;
+      if (nearestAlien) {
+          const dx = nearestAlien.x - ship.x;
+          const dy = nearestAlien.y - ship.y;
+          const angleToAlien = Math.atan2(dy, dx);
+
+          // Smoothly turn towards the alien
+          const angleDiff = angleToAlien - ship.angle;
+          // Normalize angle difference to [-PI, PI]
+          const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+          ship.angle += normalizedAngleDiff * 0.1; // Adjust rotation speed (e.g., 0.1 for smooth turning)
+
+
+          // Move towards alien if far
+          if (minDist > 150) { // Maintain some distance
+              ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8; // Slightly less aggressive thrust
+              ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
+          } else if (minDist < 100) { // Move away if too close
+              ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.5;
+              ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.5;
+          }
+
+
+          // Shoot if ready and facing roughly towards the alien
+          const angleError = Math.abs(normalizedAngleDiff);
+          if (bulletCooldown <= 0 && angleError < Math.PI / 6) { // Check if angle is within 30 degrees
+              shootBullet();
+              bulletCooldown = BULLET_COOLDOWN;
+          }
+      } else {
+          // No aliens left, maybe just drift or apply friction
+          ship.thrust.x *= FRICTION;
+          ship.thrust.y *= FRICTION;
       }
-    }
+  } else {
+      // If dodging, apply friction to counter hunting thrust
+       ship.thrust.x *= FRICTION;
+       ship.thrust.y *= FRICTION;
   }
 }
 
-function opponentAutopilot() {
-  // 1) Dodge player's bullets
-  const DODGE_RADIUS = 100;
-  const DODGE_FORCE = 0.15; // tweak as you like
-  let bulletDodge = { x: 0, y: 0 };
+// === [Dodge Only Mode for Manual] ===
+function dodgeOnlyAutopilot() {
+  const DODGE_RADIUS = 100; // How close bullets need to be to trigger dodge
+  const DODGE_FORCE = 0.15; // How strongly the ship dodges
+  let dodge = { x: 0, y: 0 };
 
-  for (const b of bullets) {
-    // player's bullets
-    const dx = opponent.x - b.x;
-    const dy = opponent.y - b.y;
+  // Consider only alien bullets for dodging
+  const incomingBullets = [...alienBullets]; // Use a copy
+  for (const bullet of incomingBullets) {
+    const dx = ship.x - bullet.x;
+    const dy = ship.y - bullet.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // If bullet is within dodge radius
     if (dist < DODGE_RADIUS) {
-      const awayX = dx / dist;
-      const awayY = dy / dist;
-      bulletDodge.x += awayX * (1 - dist / DODGE_RADIUS);
-      bulletDodge.y += awayY * (1 - dist / DODGE_RADIUS);
+      // Calculate repulsion force: stronger when closer
+      const repelForce = (1 - dist / DODGE_RADIUS);
+      // Add repulsion vector component
+      dodge.x += (dx / dist) * repelForce;
+      dodge.y += (dy / dist) * repelForce;
     }
   }
 
-  // 2) Apply dodge
-  const mag = Math.sqrt(bulletDodge.x ** 2 + bulletDodge.y ** 2);
-  if (mag > 0) {
-    bulletDodge.x = (bulletDodge.x / mag) * DODGE_FORCE;
-    bulletDodge.y = (bulletDodge.y / mag) * DODGE_FORCE;
-    opponent.thrust.x += bulletDodge.x;
-    opponent.thrust.y += bulletDodge.y;
-  }
+  // Normalize the total dodge vector
+  const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+  if (dodgeMag > 0) {
+    // Apply a scaled dodge force to the ship's thrust
+    dodge.x = (dodge.x / dodgeMag) * DODGE_FORCE;
+    dodge.y = (dodge.y / dodgeMag) * DODGE_FORCE;
 
-  // 3) Hunt the player
-  const dx = ship.x - opponent.x;
-  const dy = ship.y - opponent.y;
-  const distToShip = Math.sqrt(dx * dx + dy * dy);
-  const angleToShip = Math.atan2(dy, dx);
-
-  // Face the ship
-  opponent.angle = angleToShip;
-
-  // Thrust if not too close
-  if (distToShip > 150) {
-    // don’t get too close
-    const THRUST_ACCEL = 0.02;
-    opponent.thrust.x += Math.cos(angleToShip) * THRUST_ACCEL;
-    opponent.thrust.y += Math.sin(angleToShip) * THRUST_ACCEL;
-  }
-
-  // 4) Fire at the player if in range
-  if (distToShip < 700) {
-    if (opponent.fireCooldown <= 0) {
-      opponentShoot();
-      opponent.fireCooldown = OPPONENT_FIRE_DELAY;
-    }
+    ship.thrust.x += dodge.x;
+    ship.thrust.y += dodge.y;
+    // Note: We don't change ship.angle here, allowing manual aiming while dodging.
   }
 }
 
-function opponentShoot() {
-  laserSound.currentTime = 0;
-  laserSound.play();
+// Update camera to follow ship
+function updateCamera() {
+  camera.x = ship.x - camera.w / 2;
+  camera.y = ship.y - camera.h / 2;
 
-  // bullet starts at the nose of the opponent
-  const startX = opponent.x + Math.cos(opponent.angle) * opponent.radius;
-  const startY = opponent.y + Math.sin(opponent.angle) * opponent.radius;
+  // Clamp camera inside world
+  if (camera.x < 0) camera.x = 0;
+  if (camera.y < 0) camera.y = 0;
+  if (camera.x + camera.w > WORLD_WIDTH) camera.x = WORLD_WIDTH - camera.w;
+  if (camera.y + camera.h > WORLD_HEIGHT) camera.y = WORLD_HEIGHT - camera.h;
+}
 
-  OPPONENT_BULLETS.push({
-    x: startX,
-    y: startY,
-    dx: Math.cos(opponent.angle) * OPPONENT_BULLET_SPEED,
-    dy: Math.sin(opponent.angle) * OPPONENT_BULLET_SPEED,
-    life: OPPONENT_BULLET_LIFE,
+// Draw the starfield background
+function drawStars() {
+  for (const star of stars) {
+    const sx = star.x - camera.x;
+    const sy = star.y - camera.y;
+    // Only draw stars visible in the camera view (+ a small buffer)
+    if (sx < -10 || sy < -10 || sx > camera.w + 10 || sy > camera.h + 10) continue;
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, star.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+    ctx.fill();
+  }
+}
+
+// === [Shoot Bullet] ===
+function shootBullet() {
+  bullets.push({
+    x: ship.x + Math.cos(ship.angle) * ship.radius, // Start from ship's nose
+    y: ship.y + Math.sin(ship.angle) * ship.radius, // Start from ship's nose
+    dx: Math.cos(ship.angle) * BULLET_SPEED,
+    dy: Math.sin(ship.angle) * BULLET_SPEED,
+    life: BULLET_LIFE
+  });
+  shootSound.currentTime = 0; // Rewind sound to start
+  shootSound.play(); // Play shooting sound
+}
+
+// === [Respawn Ship] ===
+function respawnShip() {
+  ship.health = 100;
+  ship.x = WORLD_WIDTH / 2;
+  ship.y = WORLD_HEIGHT / 2;
+  ship.thrust.x = 0;
+  ship.thrust.y = 0;
+  ship.angle = 0;
+}
+
+// === [Draw Health Bar] ===
+function drawHealthBar() {
+  const barWidth = 200;
+  const barHeight = 20;
+  const healthRatio = Math.max(ship.health, 0) / 100;
+
+  ctx.fillStyle = 'gray';
+  ctx.fillRect(20, 20, barWidth, barHeight);
+
+  ctx.fillStyle = healthRatio > 0.3 ? 'limegreen' : 'red';
+  ctx.fillRect(20, 20, barWidth * healthRatio, barHeight);
+
+  ctx.strokeStyle = 'white';
+  ctx.strokeRect(20, 20, barWidth, barHeight);
+}
+
+// === [Draw Score on Screen] ===
+function drawScore() {
+  ctx.fillStyle = 'white';
+  ctx.font = '18px Arial';
+  ctx.fillText('Score: ' + score, 20, 60);
+}
+
+// === [Create Civilians] ===
+function spawnCivilians() {
+  civilians = [];
+  for (let i = 0; i < NUM_CIVILIANS; i++) {
+    civilians.push({
+      x: Math.random() * WORLD_WIDTH,
+      y: Math.random() * WORLD_HEIGHT,
+      dx: (Math.random() - 0.5) * 1.5,
+      dy: (Math.random() - 0.5) * 1.5,
+      radius: CIVILIAN_RADIUS,
+      wanderTimer: Math.floor(Math.random() * 120 + 60),
+    });
+  }
+}
+
+// === [Create UFOs] ===
+function spawnUFOs() {
+  ufos = [];
+  for (let i = 0; i < NUM_UFOS; i++) {
+    ufos.push({
+      x: Math.random() * WORLD_WIDTH,
+      y: Math.random() * WORLD_HEIGHT,
+      dx: (Math.random() - 0.5) * 2,
+      dy: (Math.random() - 0.5) * 2,
+      radius: UFO_RADIUS,
+      fireCooldown: UFO_FIRE_DELAY,
+      wanderTimer: 100,
+    });
+  }
+}
+
+// === [UFO Shoots Laser] ===
+function ufoShoot(ufo, target) {
+  const angle = Math.atan2(target.y - ufo.y, target.x - ufo.x);
+  ufoLasers.push({
+    x: ufo.x,
+    y: ufo.y,
+    dx: Math.cos(angle) * UFO_LASER_SPEED,
+    dy: Math.sin(angle) * UFO_LASER_SPEED,
+    life: 100,
   });
 }
 
-function drawOpponent() {
+// === [Update Civilians] ===
+function updateCivilians() {
+  for (let i = civilians.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
+    const civ = civilians[i];
+    // Wander movement
+    civ.x += civ.dx;
+    civ.y += civ.dy;
+    civ.wanderTimer--;
+
+    if (civ.wanderTimer <= 0) {
+      civ.dx = (Math.random() - 0.5) * 1.5;
+      civ.dy = (Math.random() - 0.5) * 1.5;
+      civ.wanderTimer = Math.floor(Math.random() * 120 + 60);
+    }
+
+    // Dodge nearby UFO lasers
+    let dodgeX = 0, dodgeY = 0;
+    for (const laser of ufoLasers) {
+      const d = Math.sqrt((laser.x - civ.x) ** 2 + (laser.y - civ.y) ** 2);
+      if (d < 100 && d > 0) { // Add d > 0 check
+        dodgeX += (civ.x - laser.x) / d;
+        dodgeY += (civ.y - laser.y) / d;
+      }
+    }
+    // Apply dodge force gradually
+    civ.dx += dodgeX * 0.05; // Reduced dodge force factor
+    civ.dy += dodgeY * 0.05; // Reduced dodge force factor
+
+    // Clamp velocity to prevent excessive speed from dodging
+    const civSpeed = Math.sqrt(civ.dx * civ.dx + civ.dy * civ.dy);
+    const MAX_CIV_SPEED = 2;
+    if (civSpeed > MAX_CIV_SPEED) {
+        civ.dx *= MAX_CIV_SPEED / civSpeed;
+        civ.dy *= MAX_CIV_SPEED / civSpeed;
+    }
+
+
+    // Clamp to world (bounce)
+    if (civ.x < civ.radius) { civ.x = civ.radius; civ.dx *= -1; }
+    if (civ.x > WORLD_WIDTH - civ.radius) { civ.x = WORLD_WIDTH - civ.radius; civ.dx *= -1; }
+    if (civ.y < civ.radius) { civ.y = civ.radius; civ.dy *= -1; }
+    if (civ.y > WORLD_HEIGHT - civ.radius) { civ.y = WORLD_HEIGHT - civ.radius; civ.dy *= -1; }
+
+
+    // Draw civilian (only if visible)
+    const sx = civ.x - camera.x;
+    const sy = civ.y - camera.y;
+    const buffer = civ.radius;
+    if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
+        ctx.fillStyle = 'lightblue';
+        ctx.beginPath();
+        ctx.arc(sx, sy, civ.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+  }
+}
+
+// === [Update UFOs] ===
+function updateUFOs() {
+  for (let i = ufos.length - 1; i >= 0; i--) { // Iterate backwards
+    const ufo = ufos[i];
+    // Chase nearest civilian
+    let nearest = null;
+    let minDist = Infinity;
+
+    for (const civ of civilians) {
+      const d = Math.sqrt((ufo.x - civ.x) ** 2 + (ufo.y - civ.y) ** 2);
+      if (d < minDist) {
+        minDist = d;
+        nearest = civ;
+      }
+    }
+
+    if (nearest) {
+      const angle = Math.atan2(nearest.y - ufo.y, nearest.x - ufo.x);
+      // Accelerate towards target
+      ufo.dx += Math.cos(angle) * 0.05; // Gradual acceleration
+      ufo.dy += Math.sin(angle) * 0.05;
+    } else {
+      // Wander
+      ufo.wanderTimer--;
+      if (ufo.wanderTimer <= 0) {
+        const wanderAngle = Math.random() * Math.PI * 2;
+        ufo.dx += Math.cos(wanderAngle) * 0.03; // Gentle wander acceleration
+        ufo.dy += Math.sin(wanderAngle) * 0.03;
+        ufo.wanderTimer = 100 + Math.random() * 100;
+      }
+    }
+
+    // Apply friction and limit speed
+    ufo.dx *= 0.99;
+    ufo.dy *= 0.99;
+    const ufoSpeed = Math.sqrt(ufo.dx * ufo.dx + ufo.dy * ufo.dy);
+    if (ufoSpeed > UFO_SPEED) {
+        ufo.dx *= UFO_SPEED / ufoSpeed;
+        ufo.dy *= UFO_SPEED / ufoSpeed;
+    }
+
+
+    ufo.x += ufo.dx;
+    ufo.y += ufo.dy;
+
+    // Bounce at edges
+    if (ufo.x < ufo.radius) { ufo.x = ufo.radius; ufo.dx *= -1; }
+    if (ufo.x > WORLD_WIDTH - ufo.radius) { ufo.x = WORLD_WIDTH - ufo.radius; ufo.dx *= -1; }
+    if (ufo.y < ufo.radius) { ufo.y = ufo.radius; ufo.dy *= -1; }
+    if (ufo.y > WORLD_HEIGHT - ufo.radius) { ufo.y = WORLD_HEIGHT - ufo.radius; ufo.dy *= -1; }
+
+
+    // Shoot laser at civilians
+    ufo.fireCooldown--;
+    if (ufo.fireCooldown <= 0 && nearest && minDist < 500) { // Add range check
+      ufoShoot(ufo, nearest);
+      ufo.fireCooldown = UFO_FIRE_DELAY;
+    }
+
+    // Draw UFO (only if visible)
+    const sx = ufo.x - camera.x;
+    const sy = ufo.y - camera.y;
+    const buffer = ufo.radius;
+     if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
+        ctx.strokeStyle = 'violet';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, ufo.radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // Check collision with player bullets
+    for (let j = bullets.length - 1; j >= 0; j--) {
+        const b = bullets[j];
+        const d = Math.sqrt((b.x - ufo.x) ** 2 + (b.y - ufo.y) ** 2);
+        if (d < ufo.radius) {
+            bullets.splice(j, 1); // destroy bullet
+            ufos.splice(i, 1); // destroy ufo
+            score += 400; // reward for killing ufo
+            break; // Bullet hit, stop checking this ufo
+        }
+    }
+  }
+}
+
+// === [Update and Draw UFO Lasers] ===
+function updateUFOLasers() {
+  for (let i = ufoLasers.length - 1; i >= 0; i--) {
+    const l = ufoLasers[i];
+    l.x += l.dx;
+    l.y += l.dy;
+    l.life--;
+
+    if (l.life <= 0 || l.x < 0 || l.x > WORLD_WIDTH || l.y < 0 || l.y > WORLD_HEIGHT) {
+      ufoLasers.splice(i, 1);
+      continue;
+    }
+
+    // Draw laser (only if visible)
+    const sx = l.x - camera.x;
+    const sy = l.y - camera.y;
+    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
+        ctx.fillStyle = 'cyan';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+
+    // Check if laser hits civilian
+    for (let j = civilians.length - 1; j >= 0; j--) {
+      const civ = civilians[j];
+      const d = Math.sqrt((l.x - civ.x) ** 2 + (l.y - civ.y) ** 2);
+      if (d < civ.radius) {
+        civilians.splice(j, 1); // Remove civilian
+        ufoLasers.splice(i, 1); // Remove laser
+        // Optional: Add score penalty or sound effect
+        console.log("Civilian hit by UFO!");
+        break; // Laser hit, stop checking other civilians
+      }
+    }
+
+    // Check if laser hits player
+    const distPlayer = Math.sqrt((l.x - ship.x) ** 2 + (l.y - ship.y) ** 2);
+    if (distPlayer < ship.radius) {
+        ship.health -= 15; // Player takes damage from UFO laser
+        ufoLasers.splice(i, 1); // Remove laser
+        console.log('Player hit by UFO laser! Health:', ship.health);
+        if (ship.health <= 0) {
+            respawnShip();
+        }
+        // No continue here, laser is gone, loop continues to next laser
+    }
+  }
+}
+
+// === [Update and Draw Alien Bullets] ===
+function updateAlienBullets() {
+  for (let i = alienBullets.length - 1; i >= 0; i--) {
+    const b = alienBullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    b.life--;
+
+    // Remove if expired or out of bounds
+    if (b.life <= 0 || b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) {
+      alienBullets.splice(i, 1);
+      continue;
+    }
+
+    // Draw alien bullet
+    const sx = b.x - camera.x;
+    const sy = b.y - camera.y;
+    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
+      ctx.fillStyle = 'lime';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Check hit with player ship
+    const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
+    if (dist < ship.radius) {
+      ship.health -= 15; // Player takes damage
+      alienBullets.splice(i, 1); // Remove bullet
+      shipHitSound.currentTime = 0;
+      shipHitSound.play();
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+      continue;
+    }
+  }
+}
+
+// Game Loop
+function update() {
+  // Ship rotation is handled differently depending on autopilot state
+  // Manual rotation happens via input handlers setting ship.rotation
+
+  // Autopilot logic
+  if (autopilot) {
+    smartAutopilot(); // Autopilot controls rotation and thrust
+  } else {
+    // Manual control + passive dodge
+    ship.angle += ship.rotation; // Apply manual rotation
+    dodgeOnlyAutopilot(); // Apply passive dodging force
+
+    // Manual Thrust
+    if (ship.thrusting) {
+      ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL;
+      ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL;
+    } else {
+      // Apply friction only when not thrusting manually and autopilot is off
+      ship.thrust.x *= FRICTION;
+      ship.thrust.y *= FRICTION;
+    }
+  }
+
+  // Apply thrust (whether from autopilot or manual control)
+  ship.x += ship.thrust.x;
+  ship.y += ship.thrust.y;
+
+  // Limit max speed (applied regardless of control mode)
+  const speed = Math.sqrt(ship.thrust.x ** 2 + ship.thrust.y ** 2);
+  if (speed > MAX_SPEED) {
+    ship.thrust.x *= MAX_SPEED / speed;
+    ship.thrust.y *= MAX_SPEED / speed;
+  }
+
+  // Clamp ship inside world boundaries (replacing screen wrapping)
+  if (ship.x < ship.radius) ship.x = ship.radius;
+  if (ship.x > WORLD_WIDTH - ship.radius) ship.x = WORLD_WIDTH - ship.radius;
+  if (ship.y < ship.radius) ship.y = ship.radius;
+  if (ship.y > WORLD_HEIGHT - ship.radius) ship.y = WORLD_HEIGHT - ship.radius;
+
+  // Update camera to follow ship
+  updateCamera();
+
+  // Clear screen
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw background stars
+  drawStars();
+
+  // Update and draw asteroids
+  updateAsteroids();
+
+  // Update and draw alien bullets
+  updateAlienBullets();
+
+  // Update and draw aliens
+  updateAliens();
+
+  // === [Update and Draw Opponent Bullets] ===
+  updateOpponentBullets(); // Call opponent bullet update logic
+
+  // === [Opponent AI Logic] ===
+  updateOpponent(); // Call opponent update logic
+
+  // === [Update UFOs, Civilians, Lasers] ===
+  updateUFOLasers();
+  updateUFOs();
+  updateCivilians();
+
+  // Update and draw bullets
+  updateBullets();
+
+  // Draw Ship relative to camera
+  drawShip();
+
+  // Draw Health Bar
+  drawHealthBar();
+
+  // Draw Score
+  drawScore();
+
+  // Decrease bullet cooldown
+  if (bulletCooldown > 0) {
+    bulletCooldown--;
+  }
+
+  // Update Explosions
+  updateExplosions();
+
+  // Update Floating Texts
+  updateFloatingTexts();
+
+  requestAnimationFrame(update);
+}
+
+// === [Update and Draw Bullets] ===
+function updateBullets() {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    b.life--;
+
+    // Remove bullet if out of life or world bounds
+    if (
+      b.life <= 0 ||
+      b.x < 0 || b.x > WORLD_WIDTH ||
+      b.y < 0 || b.y > WORLD_HEIGHT
+    ) {
+      bullets.splice(i, 1);
+      continue; // Skip drawing and collision if removed
+    }
+
+    // === [Bullet Collision with Opponent] ===
+    // Check collision with opponent
+    const d = Math.sqrt((b.x - opponent.x) ** 2 + (b.y - opponent.y) ** 2);
+    if (d < opponent.radius) {
+      bullets.splice(i, 1); // Remove bullet
+      opponent.health -= 50; // Apply damage
+      console.log('Opponent hit! Health:', opponent.health);
+      if (opponent.health <= 0) {
+        // Handle opponent defeat (respawn, score)
+        console.log("Opponent defeated!");
+        opponent.health = 100;
+        opponent.x = Math.random() * WORLD_WIDTH;
+        opponent.y = Math.random() * WORLD_HEIGHT;
+        opponent.thrust.x = 0; // Reset thrust
+        opponent.thrust.y = 0; // Reset thrust
+        score += 500; // Award score
+      }
+      continue; // Skip other checks for this bullet as it's gone
+    }
+    // === [End Bullet Collision with Opponent] ===
+
+
+    // Draw bullet relative to camera
+    const sx = b.x - camera.x;
+    const sy = b.y - camera.y;
+
+    // Only draw if visible in
+    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+  }
+}
+
+// === [Update and Draw Asteroids] ===
+function updateAsteroids() {
+  for (let i = asteroids.length - 1; i >= 0; i--) {
+    const a = asteroids[i];
+
+    // Move asteroid
+    a.x += Math.cos(a.angle) * a.speed;
+    a.y += Math.sin(a.angle) * a.speed;
+    a.currentRotation += a.rotation;
+
+    // Wrap around world edges
+    if (a.x < 0) a.x = WORLD_WIDTH;
+    if (a.x > WORLD_WIDTH) a.x = 0;
+    if (a.y < 0) a.y = WORLD_HEIGHT;
+    if (a.y > WORLD_HEIGHT) a.y = 0;
+
+    // === [Asteroid Collision with Ship - inside updateAsteroids()] ===
+    // Ship collision check
+    const dxShip = a.x - ship.x;
+    const dyShip = a.y - ship.y;
+    const distShip = Math.sqrt(dxShip * dxShip + dyShip * dyShip);
+
+    if (distShip < a.radius + ship.radius) {
+      ship.health -= 20; // reduce health
+      console.log('🚨 Ship hit! Health:', ship.health);
+
+      // Respawn if dead
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+
+      // Destroy asteroid on impact
+      if (a.radius > ASTEROID_MIN_RADIUS + 10) {
+        const newRadius = a.radius / 2;
+        asteroids.push(createAsteroid(a.x, a.y, newRadius));
+        asteroids.push(createAsteroid(a.x, a.y, newRadius));
+      }
+      asteroids.splice(i, 1);
+      continue; // Important: continue after modifying asteroid array to avoid errors
+    }
+
+
+    // Draw asteroid relative to camera
+    const sx = a.x - camera.x;
+    const sy = a.y - camera.y;
+
+    // Only draw if visible in camera (+ buffer)
+    const buffer = a.radius; // Use radius as buffer
+    if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(a.currentRotation);
+        ctx.strokeStyle = 'gray';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, a.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+
+    // Check bullet collision
+    for (let j = bullets.length - 1; j >= 0; j--) {
+      const b = bullets[j];
+      const dxBullet = a.x - b.x;
+      const dyBullet = a.y - b.y;
+      const distBullet = Math.sqrt(dxBullet * dxBullet + dyBullet * dyBullet);
+
+      if (distBullet < a.radius) {
+        bullets.splice(j, 1); // remove bullet
+
+        // Award points
+        if (a.radius > ASTEROID_MIN_RADIUS + 10) {
+          score += 100; // Big asteroid destroyed
+          // Split into 2 smaller asteroids
+          const newRadius = a.radius / 2;
+          asteroids.push(createAsteroid(a.x, a.y, newRadius));
+          asteroids.push(createAsteroid(a.x, a.y, newRadius));
+        } else {
+          score += 50; // Small asteroid destroyed
+        }
+
+        asteroids.splice(i, 1); // remove original asteroid
+        break; // stop checking this asteroid for other bullets
+      }
+    }
+  }
+}
+
+// === [Create Aliens] ===
+function spawnAliens() {
+  aliens = [];
+  for (let i = 0; i < NUM_ALIENS; i++) {
+    let x, y;
+    const side = Math.floor(Math.random() * 4);
+    if (side === 0) { // Top
+      x = Math.random() * WORLD_WIDTH;
+      y = -40;
+    } else if (side === 1) { // Bottom
+      x = Math.random() * WORLD_WIDTH;
+      y = WORLD_HEIGHT + 40;
+    } else if (side === 2) { // Left
+      x = -40;
+      y = Math.random() * WORLD_HEIGHT;
+    } else { // Right
+      x = WORLD_WIDTH + 40;
+      y = Math.random() * WORLD_HEIGHT;
+    }
+
+    aliens.push({
+      x,
+      y,
+      radius: ALIEN_RADIUS,
+      angle: 0,
+      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
+      health: 50,
+    });
+  }
+}
+
+// === [Shoot Alien Bullet] ===
+function alienShoot(alien) {
+  alienBullets.push({
+    x: alien.x,
+    y: alien.y,
+    dx: Math.cos(alien.angle) * ALIEN_BULLET_SPEED,
+    dy: Math.sin(alien.angle) * ALIEN_BULLET_SPEED,
+    life: 100,
+  });
+}
+
+// === [Update and Draw Aliens] ===
+function updateAliens() {
+  for (let i = aliens.length - 1; i >= 0; i--) {
+    const a = aliens[i];
+
+    // Chase player
+    const dx = ship.x - a.x;
+    const dy = ship.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    a.angle = Math.atan2(dy, dx);
+
+    if (dist > 60) { // Don't get too close
+      a.x += Math.cos(a.angle) * ALIEN_SPEED;
+      a.y += Math.sin(a.angle) * ALIEN_SPEED;
+    }
+
+    // Fire bullets
+    a.fireCooldown--;
+    if (a.fireCooldown <= 0) {
+      alienShoot(a);
+      a.fireCooldown = ALIEN_FIRE_DELAY;
+    }
+
+    // Draw alien
+    const sx = a.x - camera.x;
+    const sy = a.y - camera.y;
+    // Only draw if visible
+    if (sx > -a.radius && sx < camera.w + a.radius && sy > -a.radius && sy < camera.h + a.radius) {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(a.angle + Math.PI / 2);
+        ctx.strokeStyle = 'lightgreen';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, a.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Check collision with player bullets
+    for (let j = bullets.length - 1; j >= 0; j--) {
+      const b = bullets[j];
+      const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+      if (d < a.radius) {
+        bullets.splice(j, 1); // destroy bullet
+        a.health -= 50;
+
+        if (a.health <= 0) {
+          aliens.splice(i, 1); // destroy alien
+          score += 300; // reward for killing alien
+        }
+        break; // Bullet hit, stop checking this alien for other bullets
+      }
+    }
+  }
+}
+
+// === [Shoot Opponent Bullet] ===
+function opponentShoot() {
+  opponentBullets.push({
+    x: opponent.x + Math.cos(opponent.angle) * opponent.radius,
+    y: opponent.y + Math.sin(opponent.angle) * opponent.radius,
+    dx: Math.cos(opponent.angle) * OPPONENT_BULLET_SPEED,
+    dy: Math.sin(opponent.angle) * OPPONENT_BULLET_SPEED,
+    life: 100,
+  });
+}
+
+// === [Opponent AI Logic] ===
+function updateOpponent() {
+  if (opponent.health <= 0) return; // Don't update if defeated (until respawn logic is added)
+
+  // 1. Dodge player's bullets
+  const DODGE_RADIUS = 100;
+  const DODGE_FORCE = 0.15;
+  let dodge = { x: 0, y: 0 };
+
+  // Use a copy of bullets array in case it's modified during iteration elsewhere
+  const playerBullets = [...bullets];
+  for (const b of playerBullets) {
+    const dx = opponent.x - b.x;
+    const dy = opponent.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DODGE_RADIUS && dist > 0) { // Avoid division by zero if dist is 0
+      dodge.x += (dx / dist) * (1 - dist / DODGE_RADIUS);
+      dodge.y += (dy / dist) * (1 - dist / DODGE_RADIUS);
+    }
+  }
+
+  const mag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
+  if (mag > 0) {
+    dodge.x = (dodge.x / mag) * DODGE_FORCE;
+    dodge.y = (dodge.y / mag) * DODGE_FORCE;
+    opponent.thrust.x += dodge.x;
+    opponent.thrust.y += dodge.y;
+  }
+
+  // 2. Hunt player (only if not actively dodging hard)
+  if (mag < DODGE_FORCE * 0.5) { // Reduce hunting if dodging
+      const dxShip = ship.x - opponent.x;
+      const dyShip = ship.y - opponent.y;
+      const distToShip = Math.sqrt(dxShip * dxShip + dyShip * dyShip);
+      opponent.angle = Math.atan2(dyShip, dxShip);
+
+      if (distToShip > 150) {
+          // Apply thrust towards the player, scaled by distance (optional, simple constant thrust here)
+          opponent.thrust.x += Math.cos(opponent.angle) * 0.02; // Reduced acceleration
+          opponent.thrust.y += Math.sin(opponent.angle) * 0.02;
+      } else if (distToShip < 100) {
+          // Move away if too close
+          opponent.thrust.x -= Math.cos(opponent.angle) * 0.01;
+          opponent.thrust.y -= Math.sin(opponent.angle) * 0.01;
+      }
+  }
+
+
+  // 3. Fire at player
+  const dxFire = ship.x - opponent.x;
+  const dyFire = ship.y - opponent.y;
+  const distToShipFire = Math.sqrt(dxFire*dxFire + dyFire*dyFire);
+
+  if (distToShipFire < 600) { // Firing range
+    if (opponent.fireCooldown <= 0) {
+      // Check if roughly facing the player before firing
+      const angleToShip = Math.atan2(dyFire, dxFire);
+      const angleDiff = angleToShip - opponent.angle;
+      const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      if (Math.abs(normalizedAngleDiff) < Math.PI / 8) { // Fire if within ~22.5 degrees
+          opponentShoot();
+          opponent.fireCooldown = OPPONENT_FIRE_DELAY;
+      }
+    }
+  }
+
+  // Apply movement
+  opponent.x += opponent.thrust.x;
+  opponent.y += opponent.thrust.y;
+
+  // Limit speed (similar to player ship)
+  const opponentSpeed = Math.sqrt(opponent.thrust.x ** 2 + opponent.thrust.y ** 2);
+  const MAX_OPPONENT_SPEED = 3; // Give opponent a max speed
+  if (opponentSpeed > MAX_OPPONENT_SPEED) {
+    opponent.thrust.x *= MAX_OPPONENT_SPEED / opponentSpeed;
+    opponent.thrust.y *= MAX_OPPONENT_SPEED / opponentSpeed;
+  }
+
+
+  // Friction
+  opponent.thrust.x *= 0.99;
+  opponent.thrust.y *= 0.99;
+
+  // Clamp in world
+  if (opponent.x < opponent.radius) opponent.x = opponent.radius;
+  if (opponent.x > WORLD_WIDTH - opponent.radius) opponent.x = WORLD_WIDTH - opponent.radius;
+  if (opponent.y < opponent.radius) opponent.y = opponent.radius;
+  if (opponent.y > WORLD_HEIGHT - opponent.radius) opponent.y = WORLD_HEIGHT - opponent.radius;
+
+  // Decrease cooldown
+  if (opponent.fireCooldown > 0) opponent.fireCooldown--;
+
+  // Draw Opponent (only if alive)
   const sx = opponent.x - camera.x;
   const sy = opponent.y - camera.y;
-  const size = opponent.radius * 2;
+
+  // Culling check - only draw if within camera view (+ buffer)
+  const buffer = opponent.radius;
+  if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(opponent.angle + Math.PI / 2); // Align sprite rotation if needed
+      ctx.strokeStyle = 'orange';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      // Simple circle for opponent for now
+      ctx.arc(0, 0, opponent.radius, 0, Math.PI * 2);
+      // Example triangle shape (like player)
+      // ctx.moveTo(0, -opponent.radius);
+      // ctx.lineTo(opponent.radius * 0.6, opponent.radius);
+      // ctx.lineTo(-opponent.radius * 0.6, opponent.radius);
+      // ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+  }
+}
+
+// === [Update and Draw Opponent Bullets] ===
+function updateOpponentBullets() {
+  for (let i = opponentBullets.length - 1; i >= 0; i--) {
+    const b = opponentBullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    b.life--;
+
+    // Remove if expired or out of bounds
+    if (b.life <= 0 || b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) {
+      opponentBullets.splice(i, 1);
+      continue;
+    }
+
+    // Draw Opponent bullet
+    const sx = b.x - camera.x;
+    const sy = b.y - camera.y;
+    // Culling check
+    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
+        ctx.fillStyle = 'yellow'; // Different color for opponent bullets
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Check hit with player ship
+    const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
+    if (dist < ship.radius) {
+      ship.health -= 20; // Player takes damage
+      opponentBullets.splice(i, 1); // Remove bullet
+      console.log('Player hit by opponent! Health:', ship.health);
+
+      if (ship.health <= 0) {
+        respawnShip(); // Respawn player if health drops to 0
+      }
+      continue; // Skip further checks for this bullet
+    }
+  }
+}
+
+// Draw the ship relative to the camera
+function drawShip() {
+  const sx = ship.x - camera.x;
+  const sy = ship.y - camera.y;
 
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.rotate(opponent.angle + Math.PI / 2);
-  ctx.drawImage(shipImg, -size / 2, -size / 2, size, size);
+  ctx.rotate(ship.angle + Math.PI / 2);
+
+  ctx.strokeStyle = ship.color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -ship.radius);
+  ctx.lineTo(ship.radius * 0.6, ship.radius);
+  ctx.lineTo(-ship.radius * 0.6, ship.radius);
+  ctx.closePath();
+  ctx.stroke();
+
   ctx.restore();
 }
 
-function isOnCamera(obj, margin = 50) {
-  return (
-    obj.x >= camera.x - margin &&
-    obj.x <= camera.x + camera.w + margin &&
-    obj.y >= camera.y - margin &&
-    obj.y <= camera.y + camera.h + margin
-  );
-}
-
-document.querySelector("#startOverlay button").addEventListener("click", () => {
-  // Attempt to unlock sounds by playing them once
-  explosionSound.play().catch(() => {});
-  shipHitSound.play().catch(() => {});
-  asteroidExplosionSound.play().catch(() => {});
-  laserSound.play().catch(() => {});
-  alienLaserSound.play().catch(() => {});
-  ufoLaserSound.play().catch(() => {});
-  // Then pause them so they won't loop
-  explosionSound.pause();
-  shipHitSound.pause();
-  asteroidExplosionSound.pause();
-  laserSound.pause();
-  alienLaserSound.pause();
-  ufoLaserSound.pause();
-
-  generateCivilians();
-  spawnUFO();
-  document.getElementById("startOverlay").style.display = "none";
-  update();
-});
+// Start the game
+generateAsteroids(); // Initialize asteroids
+spawnAliens(); // Initialize aliens
+spawnCivilians(); // Initialize civilians
+spawnUFOs(); // Initialize UFOs
+update();
