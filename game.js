@@ -1075,6 +1075,37 @@ function updateCivilianBullets() {
   }
 }
 
+// === [New Function: Check for New Wave] ===
+function checkForNewWave() {
+  if (aliens.length === 0 && ufos.length === 0 && opponent.health <= 0) {
+    alienWave++;
+    aliensPerWave += 1;
+    alienBaseHealth += 5;
+    alienBaseSpeed += 0.1;
+    alienBaseFireDelay = Math.max(40, alienBaseFireDelay - 5);
+    spawnAliens();
+
+    // Respawn opponent
+    opponent = {
+      x: WORLD_WIDTH / 2 + 200,
+      y: WORLD_HEIGHT / 2 + 200,
+      radius: OPPONENT_RADIUS,
+      angle: 0,
+      thrust: { x: 0, y: 0 },
+      health: 100,
+      fireCooldown: 0,
+    };
+
+    // Respawn civilians and ufos
+    spawnCivilians();
+    spawnUFOs();
+
+    const colors = ['gold', 'cyan', 'lime', 'orange', 'violet'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    createFloatingText(`⚡ WAVE ${alienWave} - Full Reset!`, ship.x, ship.y - 50, randomColor, 36, true, true);
+  }
+}
+
 
 // Game Loop
 function update() {
@@ -1172,6 +1203,9 @@ function update() {
 
   // Update Floating Texts
   updateFloatingTexts();
+
+  // === [Check if all enemies are defeated] ===
+  checkForNewWave();
 
   requestAnimationFrame(update);
 }
@@ -1525,19 +1559,6 @@ function updateAliens() {
           createExplosion(a.x, a.y, a.radius * 2); // 💥 BIG explosion on death
           aliens.splice(i, 1); // destroy alien
           score += 300; // reward for killing alien
-
-          // Check if wave is cleared
-          if (aliens.length === 0) {
-            alienWave++;
-            aliensPerWave += 1; // +1 more aliens per wave
-            alienBaseHealth += 5; // +5 HP every wave
-            alienBaseSpeed += 0.1; // Move 0.1 faster every wave
-            alienBaseFireDelay = Math.max(40, alienBaseFireDelay - 5); // Shoot faster, but limit to 40 frames minimum
-            spawnAliens();
-            const colors = ['gold', 'cyan', 'lime', 'orange', 'violet'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            createFloatingText(`⚡ WAVE ${alienWave} - Stronger Enemies!`, ship.x, ship.y - 50, randomColor, 36, true, true);
-          }
         }
         break; // Bullet hit, stop checking this alien for other bullets
       }
