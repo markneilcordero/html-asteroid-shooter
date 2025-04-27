@@ -11,6 +11,9 @@ opponentImg.src = 'images/alien.png'; // Using alien image for opponent as reque
 const asteroidImg = new Image();
 asteroidImg.src = 'images/asteroid.png'; // Place your asteroid.png inside your images/ folder
 
+const explosionImg = new Image();
+explosionImg.src = 'images/explosion.png'; // Make sure you have explosion.png inside your images/ folder
+
 // === [New Civilian and UFO Images] ===
 const civilianImg = new Image();
 civilianImg.src = 'images/civilian.png'; // Add your civilian.png inside images/ folder
@@ -235,10 +238,10 @@ function updateExplosions() {
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'orange';
-    ctx.beginPath();
-    ctx.arc(sx, sy, exp.size * (1 - alpha * 0.5), 0, Math.PI * 2);
-    ctx.fill();
+
+    const imgSize = exp.size * (1 - alpha * 0.3); // Shrink slightly over time
+    ctx.drawImage(explosionImg, sx - imgSize/2, sy - imgSize/2, imgSize, imgSize);
+
     ctx.restore();
 
     exp.life--;
@@ -941,6 +944,7 @@ function updateUFOLasers() {
     const distPlayer = Math.sqrt((l.x - ship.x) ** 2 + (l.y - ship.y) ** 2);
     if (distPlayer < ship.radius) {
         ship.health -= 15; // Player takes damage from UFO laser
+        createExplosion(ship.x, ship.y, 40); // 💥 Add explosion on ship hit
         ufoLasers.splice(i, 1); // Remove laser
         createFloatingText(`👾 UFO Laser Hit! HP: ${ship.health}`, ship.x, ship.y - 50, 'violet', 22, true, true);
         if (ship.health <= 0) {
@@ -981,6 +985,7 @@ function updateAlienBullets() {
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
       ship.health -= 15; // Player takes damage
+      createExplosion(ship.x, ship.y, 40); // 💥 Add explosion on ship hit
       alienBullets.splice(i, 1); // Remove bullet
       shipHitSound.currentTime = 0;
       shipHitSound.play();
@@ -1178,7 +1183,7 @@ function updateBullets() {
             if (opponent.health <= 0) {
                 score += 500; // Award score for defeating opponent
                 createFloatingText(`💥 Opponent Defeated! +500`, opponent.x, opponent.y, 'orange', 24, true, true);
-                createExplosion(opponent.x, opponent.y, opponent.radius * 2); // Big explosion for opponent
+                createExplosion(opponent.x, opponent.y, opponent.radius * 2); // 💥 Add explosion here
                 // Consider respawning opponent after a delay here if desired
             }
             continue; // Bullet hit opponent, no need to check other collisions for this bullet
@@ -1214,6 +1219,8 @@ function updateAsteroids() {
     if (distShip < a.radius + ship.radius) {
       ship.health -= 20; // reduce health
       createFloatingText(`🚨 Ship hit! HP: ${ship.health}`, ship.x, ship.y - 40, 'red', 24, true, true);
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
+      createExplosion(a.x, a.y, a.radius * 2); // 💥 Asteroid explosion
 
       // Respawn if dead
       if (ship.health <= 0) {
@@ -1258,6 +1265,7 @@ function updateAsteroids() {
       const distBullet = Math.sqrt(dxBullet * dxBullet + dyBullet * dyBullet);
 
       if (distBullet < a.radius) {
+        createExplosion(a.x, a.y, a.radius * 2); // 💥 Add explosion here
         bullets.splice(j, 1); // remove bullet
 
         // Award points
@@ -1417,6 +1425,7 @@ function updateAliens() {
         a.health -= 50;
 
         if (a.health <= 0) {
+          createExplosion(a.x, a.y, a.radius * 2); // 💥 Add explosion here
           aliens.splice(i, 1); // destroy alien
           score += 300; // reward for killing alien
 
@@ -1588,6 +1597,7 @@ function updateOpponentBullets() {
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
       ship.health -= 10; // Player takes damage from opponent bullet
+      createExplosion(ship.x, ship.y, 40); // 💥 Add explosion on ship hit
       opponentBullets.splice(i, 1); // Remove bullet
       shipHitSound.currentTime = 0;
       shipHitSound.play();
@@ -1628,7 +1638,8 @@ function checkShipCollisions() {
       ship.health -= 20;
       createFloatingText(`🚨 Alien Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'red', 22, true, true);
       // Explosion
-      createExplosion(alien.x, alien.y, alien.radius * 1.5);
+      createExplosion(alien.x, alien.y, alien.radius * 2); // 💥 Alien explosion
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       // Remove alien
       aliens.splice(i, 1);
 
@@ -1648,7 +1659,8 @@ function checkShipCollisions() {
     if (dist < ship.radius + opponent.radius) {
       ship.health -= 30;
       createFloatingText(`💥 Opponent Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'orange', 24, true, true);
-      createExplosion(opponent.x, opponent.y, opponent.radius * 1.8);
+      createExplosion(opponent.x, opponent.y, opponent.radius * 1.8); // 💥 Opponent explosion
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       opponent.health = 0; // Instantly kill opponent
       createFloatingText('Opponent Destroyed!', opponent.x, opponent.y, 'yellow', 24, true, true);
 
@@ -1668,7 +1680,8 @@ function checkShipCollisions() {
     if (dist < ship.radius + ufo.radius) {
       ship.health -= 15;
       createFloatingText(`🛸 UFO Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'violet', 20, true, true);
-      createExplosion(ufo.x, ufo.y, ufo.radius * 1.5);
+      createExplosion(ufo.x, ufo.y, ufo.radius * 1.5); // 💥 UFO explosion
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       ufos.splice(i, 1);
 
       if (ship.health <= 0) {
@@ -1688,7 +1701,8 @@ function checkShipCollisions() {
     if (dist < ship.radius + civ.radius) {
       ship.health -= 10;
       createFloatingText(`🙈 Civilian Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'lightblue', 18, true, true);
-      createExplosion(civ.x, civ.y, civ.radius * 1.5);
+      createExplosion(civ.x, civ.y, civ.radius * 1.5); // 💥 Civilian explosion
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       civilians.splice(i, 1);
 
       if (ship.health <= 0) {
