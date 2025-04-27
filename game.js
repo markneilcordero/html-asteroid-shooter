@@ -113,8 +113,15 @@ let score = 0;
 
 // === [Bullet Settings] ===
 const BULLET_SPEED = 7;
-const BULLET_LIFE = 100; // frames
+// const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
+
+// === [Bullet / Laser Lifespans] ===
+const PLAYER_BULLET_LIFE = 500;
+const ALIEN_BULLET_LIFE = 500;
+const UFO_LASER_LIFE = 500;
+const OPPONENT_BULLET_LIFE = 500;
+const CIVILIAN_BULLET_LIFE = 500;
 
 let bullets = [];
 let bulletCooldown = 0;
@@ -653,7 +660,7 @@ function shootBullet() {
     y: ship.y + Math.sin(ship.angle) * ship.radius, // Start from ship's nose
     dx: Math.cos(ship.angle) * BULLET_SPEED,
     dy: Math.sin(ship.angle) * BULLET_SPEED,
-    life: BULLET_LIFE
+    life: PLAYER_BULLET_LIFE // Use the new constant
   });
   shootSound.currentTime = 0; // Rewind sound to start
   shootSound.play(); // Play shooting sound
@@ -732,7 +739,7 @@ function ufoShoot(ufo, target) {
     y: ufo.y,
     dx: Math.cos(angle) * UFO_LASER_SPEED,
     dy: Math.sin(angle) * UFO_LASER_SPEED,
-    life: 100,
+    life: UFO_LASER_LIFE, // Use the new constant
   });
 }
 
@@ -799,7 +806,7 @@ function updateCivilians() {
           y: civ.y,
           dx: Math.cos(angle) * 6,
           dy: Math.sin(angle) * 6,
-          life: 80,
+          life: CIVILIAN_BULLET_LIFE, // Use the new constant
         });
       }
       civ.fireCooldown = Math.floor(Math.random() * 100) + 50; // Reset cooldown
@@ -1196,7 +1203,7 @@ function updateBullets() {
 
 // === [Update and Draw Asteroids] ===
 function updateAsteroids() {
-  for (let i = asteroids.length - 1; i >= 0; i--) {
+  for (let i = 0; i < asteroids.length; i++) {
     const a = asteroids[i];
 
     // Move asteroid
@@ -1218,7 +1225,7 @@ function updateAsteroids() {
 
     if (distShip < a.radius + ship.radius) {
       ship.health -= 20; // reduce health
-      createFloatingText(`🚨 Ship hit! HP: ${ship.health}`, ship.x, ship.y - 40, 'red', 24, true, true);
+      createFloatingText(`🚨 Ship hit! HP: ${ship.health}`, ship.x, ship.y - 50, 'red', 24, true, true);
       createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       createExplosion(a.x, a.y, a.radius * 2); // 💥 Asteroid explosion
 
@@ -1325,7 +1332,7 @@ function alienShoot(alien) {
     y: alien.y,
     dx: Math.cos(alien.angle) * ALIEN_BULLET_SPEED,
     dy: Math.sin(alien.angle) * ALIEN_BULLET_SPEED,
-    life: 100,
+    life: ALIEN_BULLET_LIFE, // Use the new constant
   });
 }
 
@@ -1455,7 +1462,7 @@ function opponentShoot() {
     y: opponent.y + Math.sin(opponent.angle) * opponent.radius,
     dx: Math.cos(opponent.angle) * OPPONENT_BULLET_SPEED,
     dy: Math.sin(opponent.angle) * OPPONENT_BULLET_SPEED,
-    life: 100,
+    life: OPPONENT_BULLET_LIFE, // Use the new constant
   });
 }
 
@@ -1636,7 +1643,7 @@ function checkShipCollisions() {
     if (dist < ship.radius + alien.radius) {
       // Damage ship
       ship.health -= 20;
-      createFloatingText(`🚨 Alien Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'red', 22, true, true);
+      createFloatingText(`🚨 Alien Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'red', 24, true, true);
       // Explosion
       createExplosion(alien.x, alien.y, alien.radius * 2); // 💥 Alien explosion
       createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
