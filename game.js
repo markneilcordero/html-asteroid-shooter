@@ -1184,14 +1184,14 @@ function updateBullets() {
         const d = Math.sqrt((b.x - opponent.x) ** 2 + (b.y - opponent.y) ** 2);
         if (d < opponent.radius) {
             bullets.splice(i, 1); // Remove player bullet
+            createExplosion(b.x, b.y, 20); // Small explosion effect on hit (size 20)
             opponent.health -= 50; // Apply damage to opponent
             createFloatingText(`Opponent Hit! HP: ${opponent.health}`, opponent.x, opponent.y, 'red', 18, true, true); // Show damage text
-            createExplosion(b.x, b.y, 15); // Small explosion effect
 
             if (opponent.health <= 0) {
                 score += 500; // Award score for defeating opponent
                 createFloatingText(`💥 Opponent Defeated! +500`, opponent.x, opponent.y, 'orange', 24, true, true);
-                createExplosion(opponent.x, opponent.y, opponent.radius * 2); // 💥 Add explosion here
+                createExplosion(opponent.x, opponent.y, opponent.radius * 2); // 💥 BIG explosion on death
                 // Consider respawning opponent after a delay here if desired
             }
             continue; // Bullet hit opponent, no need to check other collisions for this bullet
@@ -1393,10 +1393,6 @@ function updateAliens() {
         // We only push the alien here to avoid modifying the opponent object
         // directly within the alien update loop, which could lead to complex interactions.
         // Pushing only the alien is simpler and often sufficient.
-        a.x += (dxOp / distOp) * overlapOp * 0.5; // Push alien slightly less strongly than vs other aliens
-        a.y += (dyOp / distOp) * overlapOp * 0.5;
-        // If mutual push is desired, opponent's position should be adjusted in its own update function
-        // or by applying a force that affects its thrust.
       }
     }
     // === [End Alien Avoidance] ===
@@ -1430,10 +1426,11 @@ function updateAliens() {
       const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
       if (d < a.radius) {
         bullets.splice(j, 1); // destroy bullet
+        createExplosion(b.x, b.y, 20); // 💥 SMALL explosion at bullet impact
         a.health -= 50;
 
         if (a.health <= 0) {
-          createExplosion(a.x, a.y, a.radius * 2); // 💥 Add explosion here
+          createExplosion(a.x, a.y, a.radius * 2); // 💥 BIG explosion on death
           aliens.splice(i, 1); // destroy alien
           score += 300; // reward for killing alien
 
