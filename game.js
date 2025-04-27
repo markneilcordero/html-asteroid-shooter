@@ -283,6 +283,38 @@ function generateAsteroids() {
   }
 }
 
+// === [Create Civilians] ===
+function spawnCivilians() {
+  civilians = [];
+  for (let i = 0; i < NUM_CIVILIANS; i++) {
+    civilians.push({
+      x: Math.random() * WORLD_WIDTH,
+      y: Math.random() * WORLD_HEIGHT,
+      dx: (Math.random() - 0.5) * 1.5,
+      dy: (Math.random() - 0.5) * 1.5,
+      radius: CIVILIAN_RADIUS,
+      wanderTimer: Math.floor(Math.random() * 120 + 60),
+      fireCooldown: Math.floor(Math.random() * 100) + 50,
+    });
+  }
+}
+
+// === [Create UFOs] ===
+function spawnUFOs() {
+  ufos = [];
+  for (let i = 0; i < NUM_UFOS; i++) {
+    ufos.push({
+      x: Math.random() * WORLD_WIDTH,
+      y: Math.random() * WORLD_HEIGHT,
+      dx: (Math.random() - 0.5) * 2,
+      dy: (Math.random() - 0.5) * 2,
+      radius: UFO_RADIUS,
+      fireCooldown: UFO_FIRE_DELAY,
+      wanderTimer: 100,
+    });
+  }
+}
+
 // Helper random function
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
@@ -434,6 +466,12 @@ document.getElementById('autopilotBtn').addEventListener('click', () => {
 
   // Hide or show joystick based on autopilot
   joystickContainer.style.display = autopilot ? 'none' : 'flex';
+
+  // Hide or show shoot button based on autopilot (Optional)
+  const shootBtn = document.getElementById('shootBtn');
+  if (shootBtn) { // Check if the button exists
+    shootBtn.style.display = autopilot ? 'none' : 'block';
+  }
 });
 
 // === [Restart Button] ===
@@ -468,15 +506,15 @@ function restartGame() {
   alienBullets = [];
   opponentBullets = [];
   ufoLasers = [];
-  civilianBullets = []; // Add this line
+  civilianBullets = []; // Keep this line
   explosions = [];
   floatingTexts = [];
 
   // Respawn entities
-  generateAsteroids();   // call your function that spawns asteroids
-  spawnAliens();         // call your function that spawns aliens
-  spawnCivilians();      // call your function that spawns civilians
-  spawnUFOs();           // call your function that spawns ufos
+  generateAsteroids();
+  spawnAliens();
+  spawnCivilians(); // Call the new function
+  spawnUFOs(); // Call the new function
 
   // Reset opponent
   opponent = {
@@ -700,50 +738,6 @@ function drawScore() {
   ctx.fillText('Score: ' + score, 20, 60);
 }
 
-// === [Create Civilians] ===
-function spawnCivilians() {
-  civilians = [];
-  for (let i = 0; i < NUM_CIVILIANS; i++) {
-    civilians.push({
-      x: Math.random() * WORLD_WIDTH,
-      y: Math.random() * WORLD_HEIGHT,
-      dx: (Math.random() - 0.5) * 1.5,
-      dy: (Math.random() - 0.5) * 1.5,
-      radius: CIVILIAN_RADIUS,
-      wanderTimer: Math.floor(Math.random() * 120 + 60),
-      fireCooldown: Math.floor(Math.random() * 100) + 50, // Add this line
-    });
-  }
-}
-
-// === [Create UFOs] ===
-function spawnUFOs() {
-  ufos = [];
-  for (let i = 0; i < NUM_UFOS; i++) {
-    ufos.push({
-      x: Math.random() * WORLD_WIDTH,
-      y: Math.random() * WORLD_HEIGHT,
-      dx: (Math.random() - 0.5) * 2,
-      dy: (Math.random() - 0.5) * 2,
-      radius: UFO_RADIUS,
-      fireCooldown: UFO_FIRE_DELAY,
-      wanderTimer: 100,
-    });
-  }
-}
-
-// === [UFO Shoots Laser] ===
-function ufoShoot(ufo, target) {
-  const angle = Math.atan2(target.y - ufo.y, target.x - ufo.x);
-  ufoLasers.push({
-    x: ufo.x,
-    y: ufo.y,
-    dx: Math.cos(angle) * UFO_LASER_SPEED,
-    dy: Math.sin(angle) * UFO_LASER_SPEED,
-    life: UFO_LASER_LIFE, // Use the new constant
-  });
-}
-
 // === [Update Civilians] ===
 function updateCivilians() {
   for (let i = civilians.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
@@ -911,6 +905,18 @@ function updateUFOs() {
         }
     }
   }
+}
+
+// === [UFO Shoots Laser] ===
+function ufoShoot(ufo, target) {
+  const angle = Math.atan2(target.y - ufo.y, target.x - ufo.x);
+  ufoLasers.push({
+    x: ufo.x,
+    y: ufo.y,
+    dx: Math.cos(angle) * UFO_LASER_SPEED,
+    dy: Math.sin(angle) * UFO_LASER_SPEED,
+    life: UFO_LASER_LIFE, // Use the new constant
+  });
 }
 
 // === [Update and Draw UFO Lasers] ===
@@ -1786,4 +1792,4 @@ generateAsteroids(); // Initialize asteroids
 spawnAliens(); // Initialize aliens
 spawnCivilians(); // Initialize civilians
 spawnUFOs(); // Initialize UFOs
-update();
+update(); // Start the game loop

@@ -10,51 +10,125 @@
       padding: 0;
       overflow: hidden;
       background: black;
+      font-family: Arial, sans-serif;
     }
     canvas {
       display: block;
       background: #000;
+      width: 100%;
+      height: 100%;
+    }
+    #joystickContainer {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    #joystick {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      position: relative;
+    }
+    .top-buttons {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+    .top-buttons button, #shootBtn {
+      padding: 8px 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+    .top-buttons button:hover, #shootBtn:hover {
+      opacity: 1;
+    }
+    #shootBtn {
+      position: absolute;
+      bottom: 40px;
+      right: 40px;
+      z-index: 10;
+    }
+
+    /* 📱 Responsive Mobile Adjustments */
+    @media (max-width: 768px) {
+      #joystickContainer {
+        width: 100px;
+        height: 100px;
+        bottom: 20px;
+        left: 20px;
+      }
+      #joystick {
+        width: 30px;
+        height: 30px;
+      }
+      #shootBtn {
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 16px;
+        font-size: 18px;
+      }
+      .top-buttons {
+        top: 10px;
+        right: 10px;
+      }
+      .top-buttons button {
+        font-size: 14px;
+        padding: 6px 10px;
+      }
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <div id="joystickContainer" style="
-    position: absolute;
-    bottom: 40px;
-    left: 40px;
-    width: 120px;
-    height: 120px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-  ">
-    <div id="joystick" style="
-      width: 40px;
-      height: 40px;
-      background: white;
-      border-radius: 50%;
-      position: relative;
-    "></div>
+  <div id="joystickContainer">
+    <div id="joystick"></div>
   </div>
 
-  <button id="autopilotBtn" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-    🕹️ Autopilot: OFF
-  </button>
+  <div class="top-buttons">
+    <button id="autopilotBtn">🕹️ Autopilot: OFF</button>
+    <button id="restartBtn">🔄 Restart</button>
+  </div>
 
-  <button id="restartBtn" style="
-    position: absolute;
-    top: 50px;
-    right: 10px;
-    z-index: 10;
-  ">
-    🔄 Restart
-  </button>
+  <button id="shootBtn">🔫 Shoot</button>
 
   <script src="game.js"></script>
+  <script>
+    // 🔫 Handle Shoot Button Press
+    const shootBtn = document.getElementById('shootBtn');
+    shootBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (bulletCooldown <= 0) {
+        shootBullet();
+        bulletCooldown = BULLET_COOLDOWN;
+      }
+    });
+    shootBtn.addEventListener('mousedown', (e) => { // also for desktop clicking
+      e.preventDefault();
+      if (bulletCooldown <= 0) {
+        shootBullet();
+        bulletCooldown = BULLET_COOLDOWN;
+      }
+    });
+  </script>
 </body>
 </html>
