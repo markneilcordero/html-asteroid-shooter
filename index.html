@@ -68,7 +68,28 @@
         position: absolute;
         bottom: 40px;
         right: 40px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%; /* Makes it perfectly round */
+        background: red;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        border: none;
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); /* Glowing effect */
+        cursor: pointer;
         z-index: 10;
+        opacity: 0.9;
+        transition: transform 0.1s, opacity 0.1s;
+      }
+
+      #shootBtn:hover {
+        opacity: 1;
+        transform: scale(1.1); /* Slight grow effect on hover */
+      }
+
+      #shootBtn:active {
+        transform: scale(0.95); /* Press down effect */
       }
 
       /* 📱 Responsive Mobile Adjustments */
@@ -84,10 +105,11 @@
           height: 30px;
         }
         #shootBtn {
+          width: 70px;
+          height: 70px;
           bottom: 20px;
           right: 20px;
-          padding: 10px 16px;
-          font-size: 18px;
+          font-size: 20px;
         }
         .top-buttons {
           top: 10px;
@@ -128,7 +150,7 @@
       <button id="restartBtn">🔄 Restart</button>
     </div>
 
-    <button id="shootBtn">🔫 Shoot</button>
+    <button id="shootBtn">FIRE</button>
 
     <script src="game.js"></script>
     <script>
@@ -144,7 +166,7 @@
               shootBullet();
               bulletCooldown = BULLET_COOLDOWN;
             }
-          }, 500); // adjust 100ms if needed
+          }, 100); // adjust 100ms if needed
         }
       }
 
