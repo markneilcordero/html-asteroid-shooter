@@ -761,6 +761,66 @@ function drawScore() {
   ctx.fillText('Score: ' + score, 20, 60);
 }
 
+// === [New Function: Draw Enemy Indicators] ===
+function drawEnemyIndicators() {
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  function drawIndicator(targetX, targetY, color = 'red') {
+    const dx = targetX - ship.x;
+    const dy = targetY - ship.y;
+    const angle = Math.atan2(dy, dx);
+
+    const indicatorDistance = Math.min(centerX, centerY) - 30; // distance from center
+    const indicatorX = centerX + Math.cos(angle) * indicatorDistance;
+    const indicatorY = centerY + Math.sin(angle) * indicatorDistance;
+
+    ctx.save();
+    ctx.translate(indicatorX, indicatorY);
+    ctx.rotate(angle + Math.PI / 2);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, -10); // top point
+    ctx.lineTo(-5, 5);  // left point
+    ctx.lineTo(5, 5);   // right point
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Draw for each alien
+  for (const alien of aliens) {
+    const sx = alien.x - camera.x;
+    const sy = alien.y - camera.y;
+
+    if (sx < 0 || sy < 0 || sx > canvas.width || sy > canvas.height) {
+      drawIndicator(alien.x, alien.y, 'red');
+    }
+  }
+
+  // Draw for opponent
+  if (opponent.health > 0) {
+    const sx = opponent.x - camera.x;
+    const sy = opponent.y - camera.y;
+
+    if (sx < 0 || sy < 0 || sx > canvas.width || sy > canvas.height) {
+      drawIndicator(opponent.x, opponent.y, 'orange');
+    }
+  }
+
+  // Draw for each asteroid
+  for (const asteroid of asteroids) {
+    const sx = asteroid.x - camera.x;
+    const sy = asteroid.y - camera.y;
+
+    if (sx < 0 || sy < 0 || sx > canvas.width || sy > canvas.height) {
+      drawIndicator(asteroid.x, asteroid.y, 'gray'); // 🚀 Use gray color for asteroids
+    }
+  }
+
+}
+
 // === [Update Civilians] ===
 function updateCivilians() {
   for (let i = civilians.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
@@ -1198,6 +1258,9 @@ function update() {
 
   // Draw Score
   drawScore();
+
+  // === [New Function: Draw Enemy Indicators] ===
+  drawEnemyIndicators();
 
   // Decrease bullet cooldown
   if (bulletCooldown > 0) {
@@ -1805,7 +1868,7 @@ function checkShipCollisions() {
       ship.health -= 30;
       createFloatingText(`💥 Opponent Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'orange', 24, true, true);
       createExplosion(opponent.x, opponent.y, opponent.radius * 1.8); // 💥 Opponent explosion
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
+      createExplosion(ship.x, ship.y, 40); //      // 💥 Also ship explosion
       opponent.health = 0; // Instantly kill opponent
       createFloatingText('Opponent Destroyed!', opponent.x, opponent.y, 'yellow', 24, true, true);
 
