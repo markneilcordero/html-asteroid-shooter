@@ -8,6 +8,13 @@ shootSound.volume = 0.2;
 explosionSound.volume = 0.5;
 shipHitSound.volume = 0.5;
 
+// === [Wave System & Alien Scaling] ===
+let alienWave = 1;
+let aliensPerWave = 3;
+let alienBaseHealth = 50;
+let alienBaseSpeed = 1.2;
+let alienBaseFireDelay = 100;
+
 // === [Autopilot Settings] ===
 let autopilot = false;
 
@@ -85,11 +92,10 @@ const ASTEROID_SPEED = 1.5;
 let asteroids = [];
 
 // === [Alien Settings] ===
-const NUM_ALIENS = 3;
 const ALIEN_RADIUS = 25;
-const ALIEN_SPEED = 1.2;
+// const ALIEN_SPEED = 1.2; // Now defined by alienBaseSpeed
 const ALIEN_BULLET_SPEED = 5;
-const ALIEN_FIRE_DELAY = 100; // frames between shots
+// const ALIEN_FIRE_DELAY = 100; // Now defined by alienBaseFireDelay
 
 let aliens = [];
 let alienBullets = [];
@@ -132,7 +138,7 @@ let explosions = [];
 let floatingTexts = [];
 
 // === [Create Floating Text] ===
-function createFloatingText(text, x, y, color = 'white') {
+function createFloatingText(text, x, y, color = 'white', size = 18, bold = false, centered = false) {
   floatingTexts.push({
     text,
     x,
@@ -141,6 +147,9 @@ function createFloatingText(text, x, y, color = 'white') {
     dy: -0.5,
     life: 60, // frames
     color,
+    size,
+    bold,
+    centered,
   });
 }
 
@@ -151,23 +160,22 @@ function updateFloatingTexts() {
     const sx = ft.x - camera.x;
     const sy = ft.y - camera.y;
 
-    ctx.save(); // Save context state
+    ctx.save();
     ctx.globalAlpha = ft.alpha;
     ctx.fillStyle = ft.color;
-    ctx.font = '18px Arial';
+    ctx.font = `${ft.bold ? 'bold' : 'normal'} ${ft.size}px Arial`;
+    ctx.textAlign = ft.centered ? 'center' : 'left'; // Center text if needed
     ctx.fillText(ft.text, sx, sy);
-    ctx.restore(); // Restore context state
+    ctx.restore();
 
-    ft.y += ft.dy;         // Move upward
-    ft.alpha -= 0.015;     // Fade out
+    ft.y += ft.dy;
+    ft.alpha -= 0.015;
     ft.life--;
 
     if (ft.life <= 0 || ft.alpha <= 0) {
       floatingTexts.splice(i, 1);
     }
   }
-  // Reset global alpha outside the loop if it was changed inside
-  // ctx.globalAlpha = 1; // Resetting here might be redundant if using save/restore
 }
 
 
@@ -444,98 +452,96 @@ function restartGame() {
 
 // === [Smart Autopilot Logic] ===
 function smartAutopilot() {
-  const DODGE_RADIUS = 100;
-  const DODGE_FORCE = 0.15;
+  const DODGE_RADIUS = 150; // Dodge earlier (was 100)
+  const DODGE_FORCE = 0.2;  // Dodge harder
   let dodge = { x: 0, y: 0 };
 
-  // 1. Dodge incoming bullets
-  const incomingBullets = [...alienBullets]; // Use a copy to avoid issues if array is modified
+  // 1. Dodge incoming bullets (alienBullets and opponentBullets)
+  const incomingBullets = [...alienBullets, ...opponentBullets]; // Dodge both
   for (const bullet of incomingBullets) {
     const dx = ship.x - bullet.x;
     const dy = ship.y - bullet.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < DODGE_RADIUS) {
-      // Calculate repulsion force, stronger when closer
       const repelForce = (1 - dist / DODGE_RADIUS);
       dodge.x += (dx / dist) * repelForce;
       dodge.y += (dy / dist) * repelForce;
     }
   }
 
-  // Normalize dodge vector and apply force
+  // Normalize dodge vector and apply dodge force
   const dodgeMag = Math.sqrt(dodge.x * dodge.x + dodge.y * dodge.y);
   if (dodgeMag > 0) {
-    // Apply a scaled dodge force
     dodge.x = (dodge.x / dodgeMag) * DODGE_FORCE;
     dodge.y = (dodge.y / dodgeMag) * DODGE_FORCE;
 
     ship.thrust.x += dodge.x;
     ship.thrust.y += dodge.y;
-
-    // Optional: Face dodge direction (can make movement jerky)
-    // ship.angle = Math.atan2(dodge.y, dodge.x);
   }
 
-  // 2. Hunt nearest alien (only if not actively dodging)
-  if (dodgeMag <= 0) { // Prioritize dodging
-      // === Hunt nearest alien or opponent ===
-      let nearestTarget = null;
-      let minDist = Infinity;
+  // 2. Hunt nearest target if not actively dodging
+  if (dodgeMag <= 0.1) { // Small margin to allow slight dodging while hunting
+    let nearestTarget = null;
+    let minDist = Infinity;
 
-      // Check aliens first
-      for (const alien of aliens) {
-        const d = Math.sqrt((alien.x - ship.x) ** 2 + (alien.y - ship.y) ** 2);
-        if (d < minDist) {
-          minDist = d;
-          nearestTarget = alien;
-        }
+    // Find nearest alien
+    for (const alien of aliens) {
+      const d = Math.hypot(alien.x - ship.x, alien.y - ship.y);
+      if (d < minDist) {
+        minDist = d;
+        nearestTarget = alien;
+      }
+    }
+
+    // Check opponent too
+    if (opponent.health > 0) {
+      const d = Math.hypot(opponent.x - ship.x, opponent.y - ship.y);
+      if (d < minDist) {
+        minDist = d;
+        nearestTarget = opponent;
+      }
+    }
+
+    if (nearestTarget) {
+      const dx = nearestTarget.x - ship.x;
+      const dy = nearestTarget.y - ship.y;
+      const angleToTarget = Math.atan2(dy, dx);
+
+      // Smoothly rotate toward target
+      const angleDiff = angleToTarget - ship.angle;
+      const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      ship.angle += normalizedAngleDiff * 0.15; // Faster aim than before
+
+      // Adjust movement dynamically
+      if (minDist > 400) {
+        // Far: chase faster
+        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 1.2;
+        ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 1.2;
+      } else if (minDist > 150) {
+        // Mid: chase normal
+        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8;
+        ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
+      } else if (minDist < 100) {
+        // Too close: back away
+        ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.6;
+        ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.6;
       }
 
-      // Also check opponent if alive
-      if (opponent.health > 0) {
-        const d = Math.sqrt((opponent.x - ship.x) ** 2 + (opponent.y - ship.y) ** 2);
-        if (d < minDist) {
-          minDist = d;
-          nearestTarget = opponent;
-        }
+      // 3. Shooting logic
+      const angleError = Math.abs(normalizedAngleDiff);
+      if (bulletCooldown <= 0 && angleError < Math.PI / 5) { // Wider shooting angle
+        shootBullet();
+        bulletCooldown = BULLET_COOLDOWN;
       }
-
-      // === Move and shoot at nearestTarget ===
-      if (nearestTarget) {
-        const dx = nearestTarget.x - ship.x;
-        const dy = nearestTarget.y - ship.y;
-        const angleToTarget = Math.atan2(dy, dx);
-
-        // Smooth rotation toward target
-        const angleDiff = angleToTarget - ship.angle;
-        const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        ship.angle += normalizedAngleDiff * 0.1;
-
-        // Move toward target if far
-        if (minDist > 150) {
-          ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8;
-          ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
-        } else if (minDist < 100) {
-          // Move away if too close
-          ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.5;
-          ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.5;
-        }
-
-        // Shoot if aiming near target
-        const angleError = Math.abs(normalizedAngleDiff);
-        if (bulletCooldown <= 0 && angleError < Math.PI / 6) {
-          shootBullet();
-          bulletCooldown = BULLET_COOLDOWN;
-        }
-      } else {
-        // No target, apply friction
-        ship.thrust.x *= FRICTION;
-        ship.thrust.y *= FRICTION;
-      }
+    } else {
+      // No target, apply friction to slow down
+      ship.thrust.x *= FRICTION;
+      ship.thrust.y *= FRICTION;
+    }
   } else {
-      // If dodging, apply friction to counter hunting thrust
-       ship.thrust.x *= FRICTION;
-       ship.thrust.y *= FRICTION;
+    // If dodging, slightly dampen hunting thrust
+    ship.thrust.x *= FRICTION;
+    ship.thrust.y *= FRICTION;
   }
 }
 
@@ -865,7 +871,7 @@ function updateUFOLasers() {
         civilians.splice(j, 1); // Remove civilian
         ufoLasers.splice(i, 1); // Remove laser
         // Optional: Add score penalty or sound effect
-        console.log("Civilian hit by UFO!");
+        createFloatingText(`💀 Civilian Lost!`, ship.x, ship.y - 100, 'cyan', 22, true, true);
         break; // Laser hit, stop checking other civilians
       }
     }
@@ -875,7 +881,7 @@ function updateUFOLasers() {
     if (distPlayer < ship.radius) {
         ship.health -= 15; // Player takes damage from UFO laser
         ufoLasers.splice(i, 1); // Remove laser
-        console.log('Player hit by UFO laser! Health:', ship.health);
+        createFloatingText(`👾 UFO Laser Hit! HP: ${ship.health}`, ship.x, ship.y - 50, 'violet', 22, true, true);
         if (ship.health <= 0) {
             respawnShip();
         }
@@ -1043,10 +1049,10 @@ function updateBullets() {
     if (d < opponent.radius) {
       bullets.splice(i, 1); // Remove bullet
       opponent.health -= 50; // Apply damage
-      console.log('Opponent hit! Health:', opponent.health);
+      createFloatingText(`💥 Opponent HP: ${opponent.health}`, opponent.x, opponent.y - 40, 'orange', 22, true, true);
       if (opponent.health <= 0) {
         // Handle opponent defeat (respawn, score)
-        console.log("Opponent defeated!");
+        createFloatingText(`🏆 Opponent Defeated!`, opponent.x, opponent.y - 60, 'gold', 32, true, true);
         opponent.health = 100;
         opponent.x = Math.random() * WORLD_WIDTH;
         opponent.y = Math.random() * WORLD_HEIGHT;
@@ -1097,7 +1103,7 @@ function updateAsteroids() {
 
     if (distShip < a.radius + ship.radius) {
       ship.health -= 20; // reduce health
-      console.log('🚨 Ship hit! Health:', ship.health);
+      createFloatingText(`🚨 Ship hit! HP: ${ship.health}`, ship.x, ship.y - 40, 'red', 24, true, true);
 
       // Respawn if dead
       if (ship.health <= 0) {
@@ -1165,7 +1171,7 @@ function updateAsteroids() {
 // === [Create Aliens] ===
 function spawnAliens() {
   aliens = [];
-  for (let i = 0; i < NUM_ALIENS; i++) {
+  for (let i = 0; i < aliensPerWave; i++) {
     let x, y;
     const side = Math.floor(Math.random() * 4);
     if (side === 0) { // Top
@@ -1187,8 +1193,9 @@ function spawnAliens() {
       y,
       radius: ALIEN_RADIUS,
       angle: 0,
-      fireCooldown: Math.floor(Math.random() * ALIEN_FIRE_DELAY),
-      health: 50,
+      fireCooldown: Math.floor(Math.random() * alienBaseFireDelay),
+      health: alienBaseHealth,
+      speed: alienBaseSpeed, // each alien now remembers its own speed!
     });
   }
 }
@@ -1216,15 +1223,15 @@ function updateAliens() {
     a.angle = Math.atan2(dy, dx);
 
     if (dist > 60) { // Don't get too close
-      a.x += Math.cos(a.angle) * ALIEN_SPEED;
-      a.y += Math.sin(a.angle) * ALIEN_SPEED;
+      a.x += Math.cos(a.angle) * a.speed; // Use alien's specific speed
+      a.y += Math.sin(a.angle) * a.speed; // Use alien's specific speed
     }
 
     // Fire bullets
     a.fireCooldown--;
     if (a.fireCooldown <= 0) {
       alienShoot(a);
-      a.fireCooldown = ALIEN_FIRE_DELAY;
+      a.fireCooldown = alienBaseFireDelay; // Use base delay for reset
     }
 
     // Draw alien
@@ -1254,6 +1261,19 @@ function updateAliens() {
         if (a.health <= 0) {
           aliens.splice(i, 1); // destroy alien
           score += 300; // reward for killing alien
+
+          // Check if wave is cleared
+          if (aliens.length === 0) {
+            alienWave++;
+            aliensPerWave += 1; // +1 more aliens per wave
+            alienBaseHealth += 5; // +5 HP every wave
+            alienBaseSpeed += 0.1; // Move 0.1 faster every wave
+            alienBaseFireDelay = Math.max(40, alienBaseFireDelay - 5); // Shoot faster, but limit to 40 frames minimum
+            spawnAliens();
+            const colors = ['gold', 'cyan', 'lime', 'orange', 'violet'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            createFloatingText(`⚡ WAVE ${alienWave} - Stronger Enemies!`, ship.x, ship.y - 50, randomColor, 36, true, true);
+          }
         }
         break; // Bullet hit, stop checking this alien for other bullets
       }
@@ -1309,16 +1329,13 @@ function updateOpponent() {
       opponent.angle = Math.atan2(dyShip, dxShip);
 
       if (distToShip > 150) {
-          // Apply thrust towards the player, scaled by distance (optional, simple constant thrust here)
-          opponent.thrust.x += Math.cos(opponent.angle) * 0.02; // Reduced acceleration
-          opponent.thrust.y += Math.sin(opponent.angle) * 0.02;
+          opponent.thrust.x += Math.cos(opponent.angle) * OPPONENT_SPEED * 0.01; // Forward thrust
+          opponent.thrust.y += Math.sin(opponent.angle) * OPPONENT_SPEED * 0.01;
       } else if (distToShip < 100) {
-          // Move away if too close
-          opponent.thrust.x -= Math.cos(opponent.angle) * 0.01;
-          opponent.thrust.y -= Math.sin(opponent.angle) * 0.01;
+          opponent.thrust.x -= Math.cos(opponent.angle) * OPPONENT_SPEED * 0.005; // Back away slower
+          opponent.thrust.y -= Math.sin(opponent.angle) * OPPONENT_SPEED * 0.005;
       }
   }
-
 
   // 3. Fire at player
   const dxFire = ship.x - opponent.x;
@@ -1419,7 +1436,7 @@ function updateOpponentBullets() {
     if (dist < ship.radius) {
       ship.health -= 20; // Player takes damage
       opponentBullets.splice(i, 1); // Remove bullet
-      console.log('Player hit by opponent! Health:', ship.health);
+      createFloatingText(`⚡ Hit by Opponent! HP: ${ship.health}`, ship.x, ship.y - 50, 'yellow', 22, true, true);
 
       if (ship.health <= 0) {
         respawnShip(); // Respawn player if health drops to 0
