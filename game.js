@@ -6,7 +6,7 @@ const alienImg = new Image();
 alienImg.src = 'images/alien.png';
 
 const opponentImg = new Image();
-opponentImg.src = 'images/alien.png'; // Using alien image for opponent as requested
+opponentImg.src = 'images/opponent.png'; // Using alien image for opponent as requested
 
 const asteroidImg = new Image();
 asteroidImg.src = 'images/asteroid.png'; // Place your asteroid.png inside your images/ folder
@@ -115,7 +115,7 @@ let score = 0;
 const BULLET_SPEED = 7;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
-const AUTOPILOT_FIRE_COOLDOWN = 100; // frames between shots when autopilot is ON (adjustable)
+const AUTOPILOT_FIRE_COOLDOWN = 50; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
 const PLAYER_BULLET_LIFE = 500;
@@ -128,7 +128,7 @@ let bullets = [];
 let bulletCooldown = 0;
 
 // === [Asteroid Settings] ===
-const NUM_ASTEROIDS = 50;
+const NUM_ASTEROIDS = 20;
 const ASTEROID_MIN_RADIUS = 20;
 const ASTEROID_MAX_RADIUS = 50;
 const ASTEROID_SPEED = 1.5;
