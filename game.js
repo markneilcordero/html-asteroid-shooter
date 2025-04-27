@@ -1061,6 +1061,9 @@ function update() {
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
 
+  // Check for collisions after moving the ship
+  checkShipCollisions();
+
   // Limit max speed (applied regardless of control mode)
   const speed = Math.sqrt(ship.thrust.x ** 2 + ship.thrust.y ** 2);
   if (speed > MAX_SPEED) {
@@ -1609,6 +1612,91 @@ function drawShip() {
   ctx.drawImage(shipImg, -imgSize/2, -imgSize/2, imgSize, imgSize);
 
   ctx.restore();
+}
+
+// Add ship collision checking function
+function checkShipCollisions() {
+  // 1. Check collision with aliens
+  for (let i = aliens.length - 1; i >= 0; i--) {
+    const alien = aliens[i];
+    const dx = ship.x - alien.x;
+    const dy = ship.y - alien.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ship.radius + alien.radius) {
+      // Damage ship
+      ship.health -= 20;
+      createFloatingText(`🚨 Alien Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'red', 22, true, true);
+      // Explosion
+      createExplosion(alien.x, alien.y, alien.radius * 1.5);
+      // Remove alien
+      aliens.splice(i, 1);
+
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+      continue;
+    }
+  }
+
+  // 2. Check collision with opponent
+  if (opponent.health > 0) {
+    const dx = ship.x - opponent.x;
+    const dy = ship.y - opponent.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ship.radius + opponent.radius) {
+      ship.health -= 30;
+      createFloatingText(`💥 Opponent Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'orange', 24, true, true);
+      createExplosion(opponent.x, opponent.y, opponent.radius * 1.8);
+      opponent.health = 0; // Instantly kill opponent
+      createFloatingText('Opponent Destroyed!', opponent.x, opponent.y, 'yellow', 24, true, true);
+
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+    }
+  }
+
+  // 3. Check collision with UFOs
+  for (let i = ufos.length - 1; i >= 0; i--) {
+    const ufo = ufos[i];
+    const dx = ship.x - ufo.x;
+    const dy = ship.y - ufo.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ship.radius + ufo.radius) {
+      ship.health -= 15;
+      createFloatingText(`🛸 UFO Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'violet', 20, true, true);
+      createExplosion(ufo.x, ufo.y, ufo.radius * 1.5);
+      ufos.splice(i, 1);
+
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+      continue;
+    }
+  }
+
+  // 4. Check collision with civilians
+  for (let i = civilians.length - 1; i >= 0; i--) {
+    const civ = civilians[i];
+    const dx = ship.x - civ.x;
+    const dy = ship.y - civ.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ship.radius + civ.radius) {
+      ship.health -= 10;
+      createFloatingText(`🙈 Civilian Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'lightblue', 18, true, true);
+      createExplosion(civ.x, civ.y, civ.radius * 1.5);
+      civilians.splice(i, 1);
+
+      if (ship.health <= 0) {
+        respawnShip();
+      }
+      continue;
+    }
+  }
 }
 
 // Start the game
