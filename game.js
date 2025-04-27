@@ -115,6 +115,7 @@ let score = 0;
 const BULLET_SPEED = 7;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
+const AUTOPILOT_FIRE_COOLDOWN = 100; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
 const PLAYER_BULLET_LIFE = 500;
@@ -576,7 +577,7 @@ function smartAutopilot() {
       const angleError = Math.abs(normalizedAngleDiff);
       if (bulletCooldown <= 0 && angleError < Math.PI / 5) { // Wider shooting angle
         shootBullet();
-        bulletCooldown = BULLET_COOLDOWN;
+        bulletCooldown = AUTOPILOT_FIRE_COOLDOWN; // use different cooldown for autopilot
       }
     } else {
       // No target, apply friction to slow down
