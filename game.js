@@ -11,6 +11,13 @@ opponentImg.src = 'images/alien.png'; // Using alien image for opponent as reque
 const asteroidImg = new Image();
 asteroidImg.src = 'images/asteroid.png'; // Place your asteroid.png inside your images/ folder
 
+// === [New Civilian and UFO Images] ===
+const civilianImg = new Image();
+civilianImg.src = 'images/civilian.png'; // Add your civilian.png inside images/ folder
+
+const ufoImg = new Image();
+ufoImg.src = 'images/ufo.png'; // Add your ufo.png inside images/ folder
+
 // === [Bullet Images] ===
 const playerBulletImg = new Image();
 playerBulletImg.src = 'images/laser.png'; // Use laser image for player bullet
@@ -967,10 +974,11 @@ function updateCivilians() {
     const sy = civ.y - camera.y;
     const buffer = civ.radius;
     if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
-        ctx.fillStyle = 'lightblue';
-        ctx.beginPath();
-        ctx.arc(sx, sy, civ.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.save(); // Add save
+        ctx.translate(sx, sy); // Add translate
+        // Replace drawing code
+        ctx.drawImage(civilianImg, -civ.radius, -civ.radius, civ.radius * 2, civ.radius * 2);
+        ctx.restore(); // Add restore
     }
   }
 }
@@ -1039,11 +1047,11 @@ function updateUFOs() {
     const sy = ufo.y - camera.y;
     const buffer = ufo.radius;
      if (sx > -buffer && sx < camera.w + buffer && sy > -buffer && sy < camera.h + buffer) {
-        ctx.strokeStyle = 'violet';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(sx, sy, ufo.radius, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.save(); // Add save
+        ctx.translate(sx, sy); // Add translate
+        // Replace drawing code
+        ctx.drawImage(ufoImg, -ufo.radius, -ufo.radius, ufo.radius * 2, ufo.radius * 2);
+        ctx.restore(); // Add restore
     }
 
     // Check collision with player bullets
