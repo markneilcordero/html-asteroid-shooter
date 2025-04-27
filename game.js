@@ -130,6 +130,7 @@ const UFO_LASER_SPEED = 6;
 let civilians = [];
 let ufos = [];
 let ufoLasers = [];
+let civilianBullets = []; // Add this line
 
 // === [Explosion Effects] ===
 let explosions = [];
@@ -423,6 +424,7 @@ function restartGame() {
   alienBullets = [];
   opponentBullets = [];
   ufoLasers = [];
+  civilianBullets = []; // Add this line
   explosions = [];
   floatingTexts = [];
 
@@ -665,6 +667,7 @@ function spawnCivilians() {
       dy: (Math.random() - 0.5) * 1.5,
       radius: CIVILIAN_RADIUS,
       wanderTimer: Math.floor(Math.random() * 120 + 60),
+      fireCooldown: Math.floor(Math.random() * 100) + 50, // Add this line
     });
   }
 }
@@ -739,6 +742,32 @@ function updateCivilians() {
     if (civ.x > WORLD_WIDTH - civ.radius) { civ.x = WORLD_WIDTH - civ.radius; civ.dx *= -1; }
     if (civ.y < civ.radius) { civ.y = civ.radius; civ.dy *= -1; }
     if (civ.y > WORLD_HEIGHT - civ.radius) { civ.y = WORLD_HEIGHT - civ.radius; civ.dy *= -1; }
+
+    // Civilian Shooting
+    civ.fireCooldown--;
+    if (civ.fireCooldown <= 0) {
+      let nearestUfo = null;
+      let minDist = Infinity;
+      for (const ufo of ufos) {
+        const d = Math.sqrt((civ.x - ufo.x) ** 2 + (civ.y - ufo.y) ** 2);
+        if (d < minDist) {
+          minDist = d;
+          nearestUfo = ufo;
+        }
+      }
+
+      if (nearestUfo && minDist < 500) { // Only shoot if UFO close enough
+        const angle = Math.atan2(nearestUfo.y - civ.y, nearestUfo.x - civ.x);
+        civilianBullets.push({
+          x: civ.x,
+          y: civ.y,
+          dx: Math.cos(angle) * 6,
+          dy: Math.sin(angle) * 6,
+          life: 80,
+        });
+      }
+      civ.fireCooldown = Math.floor(Math.random() * 100) + 50; // Reset cooldown
+    }
 
 
     // Draw civilian (only if visible)
@@ -929,6 +958,46 @@ function updateAlienBullets() {
   }
 }
 
+// === [Update and Draw Civilian Bullets] ===
+function updateCivilianBullets() {
+  for (let i = civilianBullets.length - 1; i >= 0; i--) {
+    const b = civilianBullets[i];
+    b.x += b.dx;
+    b.y += b.dy;
+    b.life--;
+
+    if (b.life <= 0 || b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) { // Also check world bounds
+      civilianBullets.splice(i, 1);
+      continue;
+    }
+
+    // Draw bullet (only if visible)
+    const sx = b.x - camera.x;
+    const sy = b.y - camera.y;
+    if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) { // Culling check
+        ctx.fillStyle = 'lightblue';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Check hit with UFO
+    for (let j = ufos.length - 1; j >= 0; j--) {
+      const ufo = ufos[j];
+      const d = Math.sqrt((b.x - ufo.x) ** 2 + (b.y - ufo.y) ** 2);
+      if (d < ufo.radius) {
+        createExplosion(ufo.x, ufo.y, ufo.radius * 1.5); // Add explosion on hit
+        ufos.splice(j, 1); // destroy UFO
+        civilianBullets.splice(i, 1); // destroy bullet
+        score += 200; // bonus score
+        createFloatingText('+200 UFO Destroyed!', b.x, b.y, 'lightblue', 16); // Floating text for score
+        break; // Bullet hit, stop checking UFOs for this bullet
+      }
+    }
+  }
+}
+
+
 // Game Loop
 function update() {
   // Ship rotation is handled differently depending on autopilot state
@@ -998,6 +1067,7 @@ function update() {
   updateUFOLasers();
   updateUFOs();
   updateCivilians();
+  updateCivilianBullets(); // Add this line
 
   // Update and draw bullets
   updateBullets();
@@ -1226,6 +1296,55 @@ function updateAliens() {
       a.x += Math.cos(a.angle) * a.speed; // Use alien's specific speed
       a.y += Math.sin(a.angle) * a.speed; // Use alien's specific speed
     }
+
+    // === [Alien Avoidance with Other Aliens] ===
+    for (let j = 0; j < aliens.length; j++) {
+      if (i === j) continue; // Skip self
+
+      const other = aliens[j];
+      const dx = a.x - other.x;
+      const dy = a.y - other.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      const minDist = a.radius + other.radius;
+
+      if (dist < minDist && dist > 0) {
+        const overlap = minDist - dist;
+        // Push both aliens away from each other
+        a.x += (dx / dist) * (overlap / 2);
+        a.y += (dy / dist) * (overlap / 2);
+        // Note: Modifying 'other' here requires care if the inner loop index 'j'
+        // could become invalid due to alien removal in other parts of the code.
+        // However, since we are iterating forward (j=0 to length) and only pushing,
+        // and the outer loop iterates backward, this should be relatively safe.
+        // If issues arise, revert to only pushing 'a'.
+        other.x -= (dx / dist) * (overlap / 2);
+        other.y -= (dy / dist) * (overlap / 2);
+      }
+    }
+
+    // === [Alien Avoidance with Opponent] ===
+    if (opponent.health > 0) { // Only avoid if opponent is alive
+      const dxOp = a.x - opponent.x;
+      const dyOp = a.y - opponent.y;
+      const distOp = Math.sqrt(dxOp * dxOp + dyOp * dyOp);
+
+      const minDistOp = a.radius + opponent.radius;
+
+      if (distOp < minDistOp && distOp > 0) {
+        const overlapOp = minDistOp - distOp;
+        // Push alien and opponent away from each other
+        // We only push the alien here to avoid modifying the opponent object
+        // directly within the alien update loop, which could lead to complex interactions.
+        // Pushing only the alien is simpler and often sufficient.
+        a.x += (dxOp / distOp) * overlapOp * 0.5; // Push alien slightly less strongly than vs other aliens
+        a.y += (dyOp / distOp) * overlapOp * 0.5;
+        // If mutual push is desired, opponent's position should be adjusted in its own update function
+        // or by applying a force that affects its thrust.
+      }
+    }
+    // === [End Alien Avoidance] ===
+
 
     // Fire bullets
     a.fireCooldown--;
