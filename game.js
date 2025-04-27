@@ -1121,8 +1121,12 @@ function updateAlienBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const bulletSize = 12;
-      ctx.drawImage(alienBulletImg, sx - bulletSize/2, sy - bulletSize/2, bulletSize, bulletSize);
+      const bulletSize = 12; // or whatever size you want
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(b.dy, b.dx)); // 🧠 Rotate the bullet to face moving direction
+      ctx.drawImage(alienBulletImg, -bulletSize/2, -bulletSize/2, bulletSize, bulletSize);
+      ctx.restore();
     }
 
     // Check hit with player ship
