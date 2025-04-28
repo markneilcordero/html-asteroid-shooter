@@ -115,7 +115,7 @@ let score = 0;
 const BULLET_SPEED = 8;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
-const AUTOPILOT_FIRE_COOLDOWN = 20; // frames between shots when autopilot is ON (adjustable)
+const AUTOPILOT_FIRE_COOLDOWN = 10; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
 const PLAYER_BULLET_LIFE = 800;
