@@ -508,6 +508,11 @@ document.getElementById("autopilotBtn").addEventListener("click", () => {
     // Check if the button exists
     shootBtn.style.display = autopilot ? "none" : "block";
   }
+  // 🆕 Hide or show LASER BUTTON too
+  const laserBtn = document.getElementById("laserBtn"); // <-- Add this
+  if (laserBtn) {
+    laserBtn.style.display = autopilot ? "none" : "block"; 
+  }
 });
 
 // === [Restart Button] ===
@@ -577,7 +582,7 @@ function smartAutopilot() {
   let dodge = { x: 0, y: 0 };
 
   // 1. Dodge incoming bullets (alienBullets and opponentBullets)
-  const incomingBullets = [...alienBullets, ...opponentBullets]; // Dodge both
+  const incomingBullets = [...alienBullets, ...opponentBullets];
   for (const bullet of incomingBullets) {
     const dx = ship.x - bullet.x;
     const dy = ship.y - bullet.y;
@@ -595,7 +600,6 @@ function smartAutopilot() {
     const dy = ship.y - asteroid.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < DODGE_RADIUS + asteroid.radius) {
-      // Bigger radius because asteroids are bigger
       const repelForce = 1 - dist / (DODGE_RADIUS + asteroid.radius);
       dodge.x += (dx / dist) * repelForce;
       dodge.y += (dy / dist) * repelForce;
@@ -614,7 +618,6 @@ function smartAutopilot() {
 
   // 2. Hunt nearest target if not actively dodging
   if (dodgeMag <= 0.1) {
-    // Small margin to allow slight dodging while hunting
     let nearestTarget = null;
     let minDist = Infinity;
 
@@ -636,7 +639,7 @@ function smartAutopilot() {
       }
     }
 
-    // 🆕 Optional: Hunt asteroids if no enemies
+    // Optional: Hunt asteroids if no enemies
     if (!nearestTarget && asteroids.length > 0) {
       for (const asteroid of asteroids) {
         const d = Math.hypot(asteroid.x - ship.x, asteroid.y - ship.y);
@@ -654,45 +657,53 @@ function smartAutopilot() {
 
       // Smoothly rotate toward target
       const angleDiff = angleToTarget - ship.angle;
-      const normalizedAngleDiff = Math.atan2(
-        Math.sin(angleDiff),
-        Math.cos(angleDiff)
-      );
-      ship.angle += normalizedAngleDiff * 0.15; // Faster aim than before
+      const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      ship.angle += normalizedAngleDiff * 0.15;
 
       // Adjust movement dynamically
       if (minDist > 400) {
-        // Far: chase faster
         ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 1.2;
         ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 1.2;
       } else if (minDist > 150) {
-        // Mid: chase normal
         ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8;
         ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
       } else if (minDist < 100) {
-        // Too close: back away
         ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.6;
         ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.6;
       }
 
-      // 3. Shooting logic
+      // === 🆕 Shooting logic with Laser
       const angleError = Math.abs(normalizedAngleDiff);
-      if (bulletCooldown <= 0 && angleError < Math.PI / 5) {
-        // Wider shooting angle
-        shootBullet();
-        bulletCooldown = AUTOPILOT_FIRE_COOLDOWN; // use different cooldown for autopilot
+      if (angleError < Math.PI / 5) {
+        if (bulletCooldown <= 0) {
+          shootBullet();
+          bulletCooldown = AUTOPILOT_FIRE_COOLDOWN;
+        }
+
+        // 🛠️ Laser attack when very close
+        if (minDist < 300) {
+          isLaserHeld = true;
+        } else {
+          isLaserHeld = false;
+        }
+      } else {
+        isLaserHeld = false;
       }
+
     } else {
-      // No target, apply friction to slow down
+      // No target found
       ship.thrust.x *= FRICTION;
       ship.thrust.y *= FRICTION;
+      isLaserHeld = false; // Stop laser if no target
     }
   } else {
-    // If dodging, slightly dampen hunting thrust
+    // Dodging
     ship.thrust.x *= FRICTION;
     ship.thrust.y *= FRICTION;
+    isLaserHeld = false; // Stop laser while dodging
   }
 }
+
 
 // === [Dodge Only Mode for Manual] ===
 function dodgeOnlyAutopilot() {
@@ -1196,14 +1207,21 @@ function updateUFOLasers() {
     const sx = l.x - camera.x;
     const sy = l.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const laserSize = 16;
+      const laserWidth = 8;  // ➡️ thinner width
+      const laserHeight = 20; // ➡️ longer height
+      const angle = Math.atan2(l.dy, l.dx); // ➡️ rotate toward movement
+
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
       ctx.drawImage(
         ufoLaserImg,
-        sx - laserSize / 2,
-        sy - laserSize / 2,
-        laserSize,
-        laserSize
+        -laserWidth / 2,
+        -laserHeight / 2,
+        laserWidth,
+        laserHeight
       );
+      ctx.restore();
     }
 
     // Check if laser hits civilian
@@ -1213,7 +1231,6 @@ function updateUFOLasers() {
       if (d < civ.radius) {
         civilians.splice(j, 1); // Remove civilian
         ufoLasers.splice(i, 1); // Remove laser
-        // Optional: Add score penalty or sound effect
         createFloatingText(
           `💀 Civilian Lost!`,
           ship.x,
@@ -1245,10 +1262,10 @@ function updateUFOLasers() {
       if (ship.health <= 0) {
         respawnShip();
       }
-      // No continue here, laser is gone, loop continues to next laser
     }
   }
 }
+
 
 // === [Update and Draw Alien Bullets] ===
 function updateAlienBullets() {
@@ -1542,8 +1559,9 @@ function update() {
   }
 
   if (activeLaser) {
-    const laserX = ship.x;
-    const laserY = ship.y;
+    const LASER_OFFSET = ship.radius; // 🛠️ You can tweak this number later (maybe 20 or 25)
+    const laserX = ship.x + Math.cos(ship.angle) * LASER_OFFSET;
+    const laserY = ship.y + Math.sin(ship.angle) * LASER_OFFSET;
     const laserAngle = ship.angle;
     const laserLength = activeLaser.length;
 
