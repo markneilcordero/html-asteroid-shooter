@@ -114,8 +114,8 @@ let score = 0;
 // === [Bullet Settings] ===
 const BULLET_SPEED = 10;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
-const BULLET_COOLDOWN = 10; // frames between shots
-const AUTOPILOT_FIRE_COOLDOWN = 10; // frames between shots when autopilot is ON (adjustable)
+const BULLET_COOLDOWN = 30; // frames between shots
+const AUTOPILOT_FIRE_COOLDOWN = 30; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
 const PLAYER_BULLET_LIFE = 800;
@@ -1100,7 +1100,7 @@ function updateAlienBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const bulletSize = 12; // or whatever size you want
+      const bulletSize = 20; // or whatever size you want
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(Math.atan2(b.dy, b.dx)); // 🧠 Rotate the bullet to face moving direction
@@ -1401,7 +1401,7 @@ function updateBullets() {
         if (d < opponent.radius) {
             bullets.splice(i, 1); // Remove player bullet
             createExplosion(b.x, b.y, 20); // Small explosion effect on hit (size 20)
-            opponent.health -= 50; // Apply damage to opponent
+            opponent.health -= 20; // Apply damage to opponent
             createFloatingText(`Opponent Hit! HP: ${opponent.health}`, opponent.x, opponent.y, 'red', 18, true, true); // Show damage text
 
             if (opponent.health <= 0) {
@@ -1765,7 +1765,7 @@ function updateAliens() {
       if (d < a.radius) {
         bullets.splice(j, 1); // destroy bullet
         createExplosion(b.x, b.y, 20); // 💥 SMALL explosion at bullet impact
-        a.health -= 50;
+        a.health -= 20;
 
         if (a.health <= 0) {
           createExplosion(a.x, a.y, a.radius * 2); // 💥 BIG explosion on death
