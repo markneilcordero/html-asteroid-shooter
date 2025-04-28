@@ -118,6 +118,58 @@
         transform: scale(0.95);
       }
 
+      #shieldBarContainer {
+        position: absolute;
+        top: 70px;
+        left: 20px;
+        width: 200px;
+        height: 20px;
+        background: rgba(0, 255, 127, 0.2); /* Faint background */
+        border: 2px solid #00ff7f; /* Light green border */
+        border-radius: 10px;
+        overflow: hidden;
+        z-index: 20;
+      }
+
+      #shieldBar {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(
+          to right,
+          #00ff7f,
+          #007f5f
+        ); /* Fancy gradient */
+        transition: width 0.2s;
+      }
+
+      #shieldBtn {
+        position: absolute;
+        bottom: 40px;
+        right: 240px; /* 📦 Place it to the left of Laser button */
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #00ff7f; /* Light green for shield */
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        border: none;
+        box-shadow: 0 0 15px rgba(0, 255, 127, 0.6);
+        cursor: pointer;
+        z-index: 10;
+        opacity: 0.9;
+        transition: transform 0.1s, opacity 0.1s;
+      }
+
+      #shieldBtn:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      #shieldBtn:active {
+        transform: scale(0.95);
+      }
+
       /* 📱 Responsive Mobile Adjustments */
       @media (max-width: 768px) {
         #joystickContainer {
@@ -152,6 +204,14 @@
           font-size: 14px;
           padding: 6px 10px;
         }
+
+        #shieldBtn {
+          width: 70px;
+          height: 70px;
+          bottom: 100px;
+          right: 180px; /* 📦 Adjust for mobile next to laser */
+          font-size: 20px;
+        }
       }
     </style>
   </head>
@@ -173,6 +233,11 @@
     </button>
 
     <canvas id="gameCanvas"></canvas>
+
+    <!-- 🛡️ Shield Bar -->
+    <div id="shieldBarContainer">
+      <div id="shieldBar"></div>
+    </div>
 
     <div
       id="desktopControls"
@@ -207,6 +272,7 @@
 
     <button id="shootBtn">🔥</button>
     <button id="laserBtn">⚡</button>
+    <button id="shieldBtn">🛡️</button>
 
     <script src="game.js"></script>
     <script>
@@ -315,6 +381,7 @@
         document.getElementById("joystickContainer").style.display = "none";
         document.getElementById("shootBtn").style.display = "none";
         document.getElementById("laserBtn").style.display = "none"; // ⬅️ ADD THIS LINE
+        document.getElementById("shieldBtn").style.display = "none"; // ⬅️ ADD THIS LINE
         document.getElementById("desktopControls").style.display = "block";
       } else {
         // 📱 Mobile mode

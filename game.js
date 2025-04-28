@@ -34,6 +34,9 @@ ufoLaserImg.src = "images/laser.png";
 const opponentLaserImg = new Image(); // Added opponent laser image
 opponentLaserImg.src = "images/laser.png"; // Using the same laser image for now
 
+const shieldImg = new Image();
+shieldImg.src = "images/shield.png";
+
 // === [Sound Effects] ===
 const shootSound = new Audio("sounds/laser.wav");
 const explosionSound = new Audio("sounds/explosion.wav");
@@ -94,6 +97,12 @@ window.addEventListener("resize", () => {
   camera.w = canvas.width;
   camera.h = canvas.height;
 });
+
+// === [Force Field Settings] ===
+let shieldActive = false;
+let shieldEnergy = 100; // Shield energy (like HP)
+const SHIELD_DRAIN_RATE = 0.5; // How fast shield energy drains per frame
+const SHIELD_REGEN_RATE = 0.5; // How fast shield regenerates when OFF
 
 // Player Ship Object
 const ship = {
@@ -389,12 +398,42 @@ let isDraggingJoystick = false;
 let joystickCenter = { x: 60, y: 60 }; // Center inside container (120px)
 let joystickCurrent = { x: 60, y: 60 };
 
+const shieldBtn = document.getElementById("shieldBtn");
+
+if (shieldBtn) {
+  shieldBtn.addEventListener("click", () => {
+    if (shieldActive) {
+      shieldActive = false; // ✅ Allow turning OFF shield even if energy is 0
+    } else if (shieldEnergy > 0) {
+      shieldActive = true; // ✅ Only allow turning ON if shieldEnergy > 0
+    }
+  });
+
+  // Optional: Mobile touch support
+  shieldBtn.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      if (shieldActive) {
+        shieldActive = false;
+      } else if (shieldEnergy > 0) {
+        shieldActive = true;
+      }
+    },
+    { passive: false }
+  );
+}
+
 // === [Laser Button Click Handler] ===
 if (laserBtn) {
-  laserBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault(); 
-    isLaserHeld = true;
-  }, { passive: false });
+  laserBtn.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      isLaserHeld = true;
+    },
+    { passive: false }
+  );
   laserBtn.addEventListener("touchend", () => {
     isLaserHeld = false;
   });
@@ -531,9 +570,9 @@ document.getElementById("autopilotBtn").addEventListener("click", () => {
     shootBtn.style.display = autopilot ? "none" : "block";
   }
   // 🆕 Hide or show LASER BUTTON too
-  const laserBtn = document.getElementById('laserBtn');
+  const laserBtn = document.getElementById("laserBtn");
   if (laserBtn) {
-    laserBtn.style.display = autopilot ? "none" : "block"; 
+    laserBtn.style.display = autopilot ? "none" : "block";
   }
 });
 
@@ -559,7 +598,9 @@ function restartGame() {
   ship.y = WORLD_HEIGHT / 2;
   ship.thrust = { x: 0, y: 0 };
   ship.angle = 0;
-  ship.health = 100;
+  ship.health = 50000;
+
+  shieldEnergy = 100;
 
   // Reset score
   score = 0;
@@ -679,7 +720,10 @@ function smartAutopilot() {
 
       // Smoothly rotate toward target
       const angleDiff = angleToTarget - ship.angle;
-      const normalizedAngleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      const normalizedAngleDiff = Math.atan2(
+        Math.sin(angleDiff),
+        Math.cos(angleDiff)
+      );
       ship.angle += normalizedAngleDiff * 0.15;
 
       // Adjust movement dynamically
@@ -711,7 +755,6 @@ function smartAutopilot() {
       } else {
         isLaserHeld = false;
       }
-
     } else {
       // No target found
       ship.thrust.x *= FRICTION;
@@ -725,7 +768,6 @@ function smartAutopilot() {
     isLaserHeld = false; // Stop laser while dodging
   }
 }
-
 
 // === [Dodge Only Mode for Manual] ===
 function dodgeOnlyAutopilot() {
@@ -872,7 +914,8 @@ function shootBullet() {
 let activeLaser = null;
 let isLaserHeld = false;
 function fireLaser() {
-  if (!activeLaser) { // ✅ Only create new laser if none active
+  if (!activeLaser) {
+    // ✅ Only create new laser if none active
     activeLaser = {
       x: ship.x,
       y: ship.y,
@@ -1230,7 +1273,7 @@ function updateUFOLasers() {
     const sx = l.x - camera.x;
     const sy = l.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const laserWidth = 8;  // ➡️ thinner width
+      const laserWidth = 8; // ➡️ thinner width
       const laserHeight = 20; // ➡️ longer height
       const angle = Math.atan2(l.dy, l.dx); // ➡️ rotate toward movement
 
@@ -1289,7 +1332,6 @@ function updateUFOLasers() {
   }
 }
 
-
 // === [Update and Draw Alien Bullets] ===
 function updateAlienBullets() {
   for (let i = alienBullets.length - 1; i >= 0; i--) {
@@ -1314,10 +1356,10 @@ function updateAlienBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const bulletSize = 20; // or whatever size you want
+      const bulletSize = 20;
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.rotate(Math.atan2(b.dy, b.dx)); // 🧠 Rotate the bullet to face moving direction
+      ctx.rotate(Math.atan2(b.dy, b.dx));
       ctx.drawImage(
         alienBulletImg,
         -bulletSize / 2,
@@ -1328,27 +1370,39 @@ function updateAlienBullets() {
       ctx.restore();
     }
 
-    // Check hit with player ship
+    // === Check hit with player ship (shield protection added) ===
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
-      ship.health -= 15; // Player takes damage
-      createExplosion(ship.x, ship.y, 40); // 💥 Add explosion on ship hit
-      alienBullets.splice(i, 1); // Remove bullet
-      shipHitSound.currentTime = 0;
-      shipHitSound.play();
-      if (ship.health <= 0) {
-        respawnShip();
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 10; // Shield absorbs bullet
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+      } else {
+        ship.health -= 15; // Only take health damage if shield inactive
+        createExplosion(ship.x, ship.y, 40);
+        shipHitSound.currentTime = 0;
+        shipHitSound.play();
+        if (ship.health <= 0) {
+          respawnShip();
+        }
       }
+      alienBullets.splice(i, 1);
       continue;
     }
+
     // === Check if alien bullet hits asteroid ===
     for (let j = asteroids.length - 1; j >= 0; j--) {
       const a = asteroids[j];
       const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
       if (d < a.radius) {
         createExplosion(a.x, a.y, a.radius * 2);
-        alienBullets.splice(i, 1); // Remove alien bullet
-        asteroids.splice(j, 1); // Remove asteroid
+        alienBullets.splice(i, 1);
+        asteroids.splice(j, 1);
 
         // Optional: Award points or floating text
         score += 50;
@@ -1359,8 +1413,7 @@ function updateAlienBullets() {
           "lightgray",
           16
         );
-
-        break; // Done with this bullet
+        break;
       }
     }
   }
@@ -1545,11 +1598,22 @@ function update() {
   // Update and draw bullets
   updateBullets();
 
+  // === [Shield Handling] ===
+  // Shield NO LONGER drains over time!
+  // Only regenerate shield slowly when shield is OFF
+  if (!shieldActive) {
+    shieldEnergy = Math.min(shieldEnergy + SHIELD_REGEN_RATE, 100);
+  }
+
   // Draw Ship relative to camera
   drawShip();
 
   // Draw Health Bar
   drawHealthBar();
+
+  // === [Update Shield Bar] ===
+  const shieldBar = document.getElementById("shieldBar");
+  shieldBar.style.width = `${shieldEnergy}%`;
 
   // Draw Score
   drawScore();
@@ -1575,13 +1639,12 @@ function update() {
       fireLaser();
     }
     if (activeLaser) {
-      activeLaser.width = Math.min(1 + laserHoldTime * 0.2, 8); 
+      activeLaser.width = Math.min(1 + laserHoldTime * 0.2, 8);
     }
   } else {
     activeLaser = null;
     laserHoldTime = 0;
-  }  
-  
+  }
 
   if (activeLaser) {
     const LASER_OFFSET = ship.radius; // 🛠️ You can tweak this number later (maybe 20 or 25)
@@ -1865,14 +1928,34 @@ function updateAsteroids() {
     if (a.y < 0) a.y = WORLD_HEIGHT;
     if (a.y > WORLD_HEIGHT) a.y = 0;
 
-    // === [Asteroid Collision with Ship - inside updateAsteroids()] ===
-    // Ship collision check
+    // === [Asteroid Collision with Ship] ===
     const dxShip = a.x - ship.x;
     const dyShip = a.y - ship.y;
     const distShip = Math.sqrt(dxShip * dxShip + dyShip * dyShip);
 
     if (distShip < a.radius + ship.radius) {
-      ship.health -= 20; // reduce health
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 10;
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+        createExplosion(ship.x, ship.y, 40);
+        createExplosion(a.x, a.y, a.radius * 2);
+
+        if (a.radius > ASTEROID_MIN_RADIUS + 10) {
+          const newRadius = a.radius / 2;
+          asteroids.push(createAsteroid(a.x, a.y, newRadius));
+          asteroids.push(createAsteroid(a.x, a.y, newRadius));
+        }
+        asteroids.splice(i, 1);
+        continue;
+      }
+
+      ship.health -= 20;
       createFloatingText(
         `🚨 Ship hit! HP: ${ship.health}`,
         ship.x,
@@ -1882,30 +1965,26 @@ function updateAsteroids() {
         true,
         true
       );
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
-      createExplosion(a.x, a.y, a.radius * 2); // 💥 Asteroid explosion
+      createExplosion(ship.x, ship.y, 40);
+      createExplosion(a.x, a.y, a.radius * 2);
 
-      // Respawn if dead
       if (ship.health <= 0) {
         respawnShip();
       }
 
-      // Destroy asteroid on impact
       if (a.radius > ASTEROID_MIN_RADIUS + 10) {
         const newRadius = a.radius / 2;
         asteroids.push(createAsteroid(a.x, a.y, newRadius));
         asteroids.push(createAsteroid(a.x, a.y, newRadius));
       }
       asteroids.splice(i, 1);
-      continue; // Important: continue after modifying asteroid array to avoid errors
+      continue;
     }
 
-    // Draw asteroid relative to camera
+    // Draw asteroid
     const sx = a.x - camera.x;
     const sy = a.y - camera.y;
-
-    // Only draw if visible in camera (+ buffer)
-    const buffer = a.radius; // Use radius as buffer
+    const buffer = a.radius;
     if (
       sx > -buffer &&
       sx < camera.w + buffer &&
@@ -1915,15 +1994,12 @@ function updateAsteroids() {
       ctx.save();
       ctx.translate(sx, sy);
       ctx.rotate(a.currentRotation);
-
-      // Draw asteroid image
-      const imgSize = a.radius * 2; // size the image to match asteroid size
+      const imgSize = a.radius * 2;
       ctx.drawImage(asteroidImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
-
       ctx.restore();
     }
 
-    // Check bullet collision
+    // Bullet collision
     for (let j = bullets.length - 1; j >= 0; j--) {
       const b = bullets[j];
       const dxBullet = a.x - b.x;
@@ -1931,26 +2007,24 @@ function updateAsteroids() {
       const distBullet = Math.sqrt(dxBullet * dxBullet + dyBullet * dyBullet);
 
       if (distBullet < a.radius) {
-        createExplosion(a.x, a.y, a.radius * 2); // 💥 Add explosion here
-        bullets.splice(j, 1); // remove bullet
+        createExplosion(a.x, a.y, a.radius * 2);
+        bullets.splice(j, 1);
 
-        // Award points
         if (a.radius > ASTEROID_MIN_RADIUS + 10) {
-          score += 100; // Big asteroid destroyed
-          // Split into 2 smaller asteroids
+          score += 100;
           const newRadius = a.radius / 2;
           asteroids.push(createAsteroid(a.x, a.y, newRadius));
           asteroids.push(createAsteroid(a.x, a.y, newRadius));
         } else {
-          score += 50; // Small asteroid destroyed
+          score += 50;
         }
 
-        asteroids.splice(i, 1); // remove original asteroid
-        break; // done with this bullet
+        asteroids.splice(i, 1);
+        break;
       }
     }
 
-    // === [Asteroid Collision with Aliens, Opponent, UFOs, and Civilians] ===
+    // === [Asteroid Collision with Aliens, Opponent, UFOs, Civilians] ===
 
     // Aliens
     for (let k = aliens.length - 1; k >= 0; k--) {
@@ -1962,9 +2036,9 @@ function updateAsteroids() {
       if (dist < a.radius + alien.radius) {
         createExplosion(a.x, a.y, a.radius * 2);
         createExplosion(alien.x, alien.y, alien.radius * 2);
-        aliens.splice(k, 1); // Remove alien
-        asteroids.splice(i, 1); // Remove asteroid
-        break; // Stop checking this asteroid
+        aliens.splice(k, 1);
+        asteroids.splice(i, 1);
+        break;
       }
       checkForNewWave();
     }
@@ -1977,9 +2051,9 @@ function updateAsteroids() {
     if (opponent.health > 0 && distOp < a.radius + opponent.radius) {
       createExplosion(a.x, a.y, a.radius * 2);
       createExplosion(opponent.x, opponent.y, opponent.radius * 2);
-      opponent.health = 0; // Destroy opponent
-      asteroids.splice(i, 1); // Remove asteroid
-      break; // Stop checking this asteroid
+      opponent.health = 0;
+      asteroids.splice(i, 1);
+      break;
     }
     checkForNewWave();
 
@@ -1993,9 +2067,9 @@ function updateAsteroids() {
       if (dist < a.radius + ufo.radius) {
         createExplosion(a.x, a.y, a.radius * 2);
         createExplosion(ufo.x, ufo.y, ufo.radius * 2);
-        ufos.splice(k, 1); // Remove UFO
-        asteroids.splice(i, 1); // Remove asteroid
-        break; // Stop checking this asteroid
+        ufos.splice(k, 1);
+        asteroids.splice(i, 1);
+        break;
       }
     }
 
@@ -2009,9 +2083,9 @@ function updateAsteroids() {
       if (dist < a.radius + civ.radius) {
         createExplosion(a.x, a.y, a.radius * 2);
         createExplosion(civ.x, civ.y, civ.radius * 2);
-        civilians.splice(k, 1); // Remove civilian
-        asteroids.splice(i, 1); // Remove asteroid
-        break; // Stop checking this asteroid
+        civilians.splice(k, 1);
+        asteroids.splice(i, 1);
+        break;
       }
     }
   }
@@ -2433,11 +2507,11 @@ function updateOpponentBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) {
-      const bulletSize = 20; // You can adjust size if needed
-      const bulletHeight = 16; // Taller if you want
+      const bulletSize = 20;
+      const bulletHeight = 16;
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.rotate(Math.atan2(b.dy, b.dx)); // Rotate laser to match movement
+      ctx.rotate(Math.atan2(b.dy, b.dx));
       ctx.drawImage(
         opponentLaserImg,
         -bulletSize / 2,
@@ -2448,27 +2522,39 @@ function updateOpponentBullets() {
       ctx.restore();
     }
 
-    // Check hit with player ship
+    // === Check hit with player ship (shield protection added) ===
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
-      ship.health -= 10; // Player takes damage from opponent bullet
-      createExplosion(ship.x, ship.y, 40); // 💥 Add explosion on ship hit
-      opponentBullets.splice(i, 1); // Remove bullet
-      shipHitSound.currentTime = 0;
-      shipHitSound.play();
-      if (ship.health <= 0) {
-        respawnShip();
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 10; // Shield absorbs the hit
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+      } else {
+        ship.health -= 10;
+        createExplosion(ship.x, ship.y, 40);
+        shipHitSound.currentTime = 0;
+        shipHitSound.play();
+        if (ship.health <= 0) {
+          respawnShip();
+        }
       }
+      opponentBullets.splice(i, 1);
       continue;
     }
+
     // === Check if opponent bullet hits asteroid ===
     for (let j = asteroids.length - 1; j >= 0; j--) {
       const a = asteroids[j];
       const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
       if (d < a.radius) {
         createExplosion(a.x, a.y, a.radius * 2);
-        opponentBullets.splice(i, 1); // Remove opponent bullet
-        asteroids.splice(j, 1); // Remove asteroid
+        opponentBullets.splice(i, 1);
+        asteroids.splice(j, 1);
 
         // Optional: Award points or floating text
         score += 50;
@@ -2479,8 +2565,7 @@ function updateOpponentBullets() {
           "lightgray",
           16
         );
-
-        break; // Done with this bullet
+        break;
       }
     }
   }
@@ -2501,6 +2586,35 @@ function drawShip() {
   ctx.restore();
 }
 
+function drawShip() {
+  const sx = ship.x - camera.x;
+  const sy = ship.y - camera.y;
+
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(ship.angle + Math.PI / 2);
+
+  const imgSize = ship.radius * 2;
+  ctx.drawImage(shipImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+
+  ctx.restore();
+
+  // 🛡️ Draw Shield Image if shield is active or has energy
+  if (shieldEnergy > 0) {
+    ctx.save();
+    ctx.globalAlpha = shieldActive ? 0.8 : 0.3; // Bright if active, dim if passive
+    const shieldSize = (ship.radius + 15) * 2; // Slightly bigger than ship
+    ctx.drawImage(
+      shieldImg,
+      sx - shieldSize / 2,
+      sy - shieldSize / 2,
+      shieldSize,
+      shieldSize
+    );
+    ctx.restore();
+  }
+}
+
 // Add ship collision checking function
 function checkShipCollisions() {
   // 1. Check collision with aliens
@@ -2511,7 +2625,21 @@ function checkShipCollisions() {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < ship.radius + alien.radius) {
-      // Damage ship
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 10;
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+        createExplosion(alien.x, alien.y, alien.radius * 2);
+        createExplosion(ship.x, ship.y, 40);
+        aliens.splice(i, 1);
+        return;
+      }
+
       ship.health -= 20;
       createFloatingText(
         `🚨 Alien Crash! HP: ${ship.health}`,
@@ -2522,16 +2650,13 @@ function checkShipCollisions() {
         true,
         true
       );
-      // Explosion
-      createExplosion(alien.x, alien.y, alien.radius * 2); // 💥 Alien explosion
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
+      createExplosion(alien.x, alien.y, alien.radius * 2);
+      createExplosion(ship.x, ship.y, 40);
 
-      // Respawn if dead
       if (ship.health <= 0) {
         respawnShip();
       }
 
-      // Destroy alien on impact
       if (alien.radius > ALIEN_RADIUS + 10) {
         const newRadius = alien.radius / 2;
         asteroids.push(createAsteroid(alien.x, alien.y, newRadius));
@@ -2549,6 +2674,30 @@ function checkShipCollisions() {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < ship.radius + opponent.radius) {
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 15;
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+        createExplosion(opponent.x, opponent.y, opponent.radius * 1.8);
+        createExplosion(ship.x, ship.y, 40);
+        opponent.health = 0;
+        createFloatingText(
+          "Opponent Destroyed!",
+          opponent.x,
+          opponent.y,
+          "yellow",
+          24,
+          true,
+          true
+        );
+        return;
+      }
+
       ship.health -= 30;
       createFloatingText(
         `💥 Opponent Crash! HP: ${ship.health}`,
@@ -2559,9 +2708,9 @@ function checkShipCollisions() {
         true,
         true
       );
-      createExplosion(opponent.x, opponent.y, opponent.radius * 1.8); // 💥 Opponent explosion
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
-      opponent.health = 0; // Instantly kill opponent
+      createExplosion(opponent.x, opponent.y, opponent.radius * 1.8);
+      createExplosion(ship.x, ship.y, 40);
+      opponent.health = 0;
       createFloatingText(
         "Opponent Destroyed!",
         opponent.x,
@@ -2586,6 +2735,21 @@ function checkShipCollisions() {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < ship.radius + ufo.radius) {
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 8;
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+        createExplosion(ufo.x, ufo.y, ufo.radius * 1.5);
+        createExplosion(ship.x, ship.y, 40);
+        ufos.splice(i, 1);
+        return;
+      }
+
       ship.health -= 15;
       createFloatingText(
         `🛸 UFO Crash! HP: ${ship.health}`,
@@ -2596,8 +2760,8 @@ function checkShipCollisions() {
         true,
         true
       );
-      createExplosion(ufo.x, ufo.y, ufo.radius * 1.5); // 💥 UFO explosion
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
+      createExplosion(ufo.x, ufo.y, ufo.radius * 1.5);
+      createExplosion(ship.x, ship.y, 40);
       ufos.splice(i, 1);
 
       if (ship.health <= 0) {
@@ -2615,6 +2779,21 @@ function checkShipCollisions() {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < ship.radius + civ.radius) {
+      if (shieldActive && shieldEnergy > 0) {
+        shieldEnergy -= 5;
+        createFloatingText(
+          "🛡️ Shield Blocked!",
+          ship.x,
+          ship.y - 60,
+          "cyan",
+          20
+        );
+        createExplosion(civ.x, civ.y, civ.radius * 1.5);
+        createExplosion(ship.x, ship.y, 40);
+        civilians.splice(i, 1);
+        return;
+      }
+
       ship.health -= 10;
       createFloatingText(
         `🙈 Civilian Crash! HP: ${ship.health}`,
@@ -2625,8 +2804,8 @@ function checkShipCollisions() {
         true,
         true
       );
-      createExplosion(civ.x, civ.y, civ.radius * 1.5); // 💥 Civilian explosion
-      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
+      createExplosion(civ.x, civ.y, civ.radius * 1.5);
+      createExplosion(ship.x, ship.y, 40);
       civilians.splice(i, 1);
 
       if (ship.health <= 0) {
