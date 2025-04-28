@@ -389,6 +389,29 @@ let isDraggingJoystick = false;
 let joystickCenter = { x: 60, y: 60 }; // Center inside container (120px)
 let joystickCurrent = { x: 60, y: 60 };
 
+// === [Laser Button Click Handler] ===
+const laserBtn = document.getElementById("laserBtn");
+if (laserBtn) {
+  laserBtn.addEventListener("touchstart", () => {
+    isLaserHeld = true;
+  });
+  laserBtn.addEventListener("touchend", () => {
+    isLaserHeld = false;
+  });
+
+  laserBtn.addEventListener("mousedown", () => {
+    isLaserHeld = true;
+  });
+  laserBtn.addEventListener("mouseup", () => {
+    isLaserHeld = false;
+  });
+
+  laserBtn.addEventListener("mouseleave", () => {
+    isLaserHeld = false;
+  });
+}
+
+
 const joystickContainer = document.getElementById("joystickContainer");
 const joystick = document.getElementById("joystick");
 
