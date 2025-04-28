@@ -48,7 +48,7 @@ shipHitSound.volume = 0.5;
 let alienWave = 1;
 let aliensPerWave = 3;
 let alienBaseHealth = 50;
-let alienBaseSpeed = 1.2;
+let alienBaseSpeed = 1.5;  // Smooth alien speed (was 1.2)
 let alienBaseFireDelay = 100;
 
 // === [Autopilot Settings] ===
@@ -112,7 +112,7 @@ const ship = {
 let score = 0;
 
 // === [Bullet Settings] ===
-const BULLET_SPEED = 20;
+const BULLET_SPEED = 14; // Smooth, not too fast (was 20)
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 30; // frames between shots
 const AUTOPILOT_FIRE_COOLDOWN = 30; // frames between shots when autopilot is ON (adjustable)
@@ -138,7 +138,8 @@ let asteroids = [];
 // === [Alien Settings] ===
 const ALIEN_RADIUS = 25;
 // const ALIEN_SPEED = 1.2; // Now defined by alienBaseSpeed
-const ALIEN_BULLET_SPEED = 8;
+const ALIEN_BULLET_SPEED = 10; // Smooth, not too fast
+
 // const ALIEN_FIRE_DELAY = 100; // Now defined by alienBaseFireDelay
 
 let aliens = [];
@@ -146,8 +147,8 @@ let alienBullets = [];
 
 // === [Opponent Settings] ===
 const OPPONENT_RADIUS = 25;
-const OPPONENT_SPEED = 1.8; // Note: OPPONENT_SPEED is defined but not used in the provided updateOpponent logic
-const OPPONENT_BULLET_SPEED = 8; // Increased speed
+const OPPONENT_SPEED = 2.2;        // Smooth opponent speed (was 1.8)
+const OPPONENT_BULLET_SPEED = 12;  // Smooth, a bit faster than aliens
 const OPPONENT_FIRE_DELAY = 60; // frames between shots
 
 let opponent = {
@@ -322,9 +323,9 @@ function randomRange(min, max) {
 
 // Controls
 const TURN_SPEED = Math.PI / 90; // radians per frame
-const THRUST_ACCEL = 0.2;
+const THRUST_ACCEL = 0.15; // Smooth acceleration (was 0.2)
 const FRICTION = 0.99;
-const MAX_SPEED = 7;
+const MAX_SPEED = 5;       // Smooth top speed (was 7)
 
 // Input Handlers
 let isSpacebarHeld = false; // ✅ Track if spacebar is held down
@@ -1504,7 +1505,7 @@ function updateAsteroids() {
         }
 
         asteroids.splice(i, 1); // remove original asteroid
-        break; // stop checking this asteroid for other bullets
+        break; // done with this bullet
       }
     }
 
@@ -2024,12 +2025,19 @@ function checkShipCollisions() {
       // Explosion
       createExplosion(alien.x, alien.y, alien.radius * 2); // 💥 Alien explosion
       createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
-      // Remove alien
-      aliens.splice(i, 1);
 
+      // Respawn if dead
       if (ship.health <= 0) {
         respawnShip();
       }
+
+      // Destroy alien on impact
+      if (alien.radius > ALIEN_RADIUS + 10) {
+        const newRadius = alien.radius / 2;
+        asteroids.push(createAsteroid(alien.x, alien.y, newRadius));
+        asteroids.push(createAsteroid(alien.x, alien.y, newRadius));
+      }
+      aliens.splice(i, 1);
       continue;
     }
   }
@@ -2044,7 +2052,7 @@ function checkShipCollisions() {
       ship.health -= 30;
       createFloatingText(`💥 Opponent Crash! HP: ${ship.health}`, ship.x, ship.y - 50, 'orange', 24, true, true);
       createExplosion(opponent.x, opponent.y, opponent.radius * 1.8); // 💥 Opponent explosion
-      createExplosion(ship.x, ship.y, 40); //      // 💥 Also ship explosion
+      createExplosion(ship.x, ship.y, 40); // 💥 Also ship explosion
       opponent.health = 0; // Instantly kill opponent
       createFloatingText('Opponent Destroyed!', opponent.x, opponent.y, 'yellow', 24, true, true);
 
