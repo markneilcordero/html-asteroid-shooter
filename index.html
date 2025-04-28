@@ -141,6 +141,25 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <div id="desktopControls" style="
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 10px 20px;
+  font-size: 18px;
+  border-radius: 10px;
+  backdrop-filter: blur(5px);
+  z-index: 20;
+  display: none; /* Hidden by default */
+  font-family: Arial, sans-serif;
+">
+  🖥️ Controls: Move with <strong>Arrow Keys</strong> | Shoot with <strong>Spacebar</strong>
+</div>
+
+
     <div id="joystickContainer">
       <div id="joystick"></div>
     </div>
@@ -201,5 +220,20 @@
         enableSoundBtn.style.display = "none"; // Hide button after clicked
       });
     </script>
+    <script>
+      // 📱 Simple mobile detection
+      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+      if (!isMobile) {
+        // 🖥️ Desktop mode
+        document.getElementById('joystickContainer').style.display = 'none';
+        document.getElementById('shootBtn').style.display = 'none';
+        document.getElementById('desktopControls').style.display = 'block';
+      } else {
+        // 📱 Mobile mode
+        document.getElementById('desktopControls').style.display = 'none';
+      }
+    </script>
+    
   </body>
 </html>

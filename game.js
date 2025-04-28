@@ -327,6 +327,7 @@ const FRICTION = 0.99;
 const MAX_SPEED = 5;
 
 // Input Handlers
+let isSpacebarHeld = false; // ✅ Track if spacebar is held down
 document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case 'ArrowLeft':
@@ -339,10 +340,7 @@ document.addEventListener('keydown', (e) => {
       ship.thrusting = true;
       break;
     case ' ': // Spacebar
-      if (bulletCooldown <= 0) {
-        shootBullet();
-        bulletCooldown = BULLET_COOLDOWN;
-      }
+      isSpacebarHeld = true; // ✅ Start shooting
       break;
   }
 });
@@ -355,6 +353,9 @@ document.addEventListener('keyup', (e) => {
       break;
     case 'ArrowUp':
       ship.thrusting = false;
+      break;
+    case ' ': // Spacebar
+      isSpacebarHeld = false; // ✅ Stop shooting
       break;
   }
 });
@@ -1266,6 +1267,13 @@ function update() {
   if (bulletCooldown > 0) {
     bulletCooldown--;
   }
+
+  // ✅ Add this inside your update() loop:
+  if (isSpacebarHeld && bulletCooldown <= 0) {
+    shootBullet();
+    bulletCooldown = BULLET_COOLDOWN;
+  }
+
 
   // Update Explosions
   updateExplosions();
