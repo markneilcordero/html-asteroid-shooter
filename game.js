@@ -391,9 +391,10 @@ let joystickCurrent = { x: 60, y: 60 };
 
 // === [Laser Button Click Handler] ===
 if (laserBtn) {
-  laserBtn.addEventListener("touchstart", () => {
+  laserBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault(); 
     isLaserHeld = true;
-  });
+  }, { passive: false });
   laserBtn.addEventListener("touchend", () => {
     isLaserHeld = false;
   });
@@ -409,7 +410,6 @@ if (laserBtn) {
     isLaserHeld = false;
   });
 }
-
 
 const joystickContainer = document.getElementById("joystickContainer");
 const joystick = document.getElementById("joystick");
@@ -531,7 +531,7 @@ document.getElementById("autopilotBtn").addEventListener("click", () => {
     shootBtn.style.display = autopilot ? "none" : "block";
   }
   // 🆕 Hide or show LASER BUTTON too
-  const laserBtn = document.getElementById("laserBtn"); // <-- Add this
+  const laserBtn = document.getElementById('laserBtn');
   if (laserBtn) {
     laserBtn.style.display = autopilot ? "none" : "block"; 
   }
@@ -872,17 +872,18 @@ function shootBullet() {
 let activeLaser = null;
 let isLaserHeld = false;
 function fireLaser() {
-  activeLaser = {
-    x: ship.x,
-    y: ship.y,
-    angle: ship.angle,
-    length: 500, // 🛠️ How long you want your laser
-    width: 1, // 🛠️ How thick you want your laser
-    life: 30, // 🛠️ How many frames laser stays (can be infinite if you want)
-  };
-
-  shootSound.currentTime = 0;
-  shootSound.play();
+  if (!activeLaser) { // ✅ Only create new laser if none active
+    activeLaser = {
+      x: ship.x,
+      y: ship.y,
+      angle: ship.angle,
+      length: 500,
+      width: 1, // start small
+      life: 30,
+    };
+    shootSound.currentTime = 0;
+    shootSound.play();
+  }
 }
 
 // === [Respawn Ship] ===
@@ -1467,6 +1468,7 @@ function checkForNewWave() {
 }
 
 // Game Loop
+let laserHoldTime = 0;
 function update() {
   // Ship rotation is handled differently depending on autopilot state
   // Manual rotation happens via input handlers setting ship.rotation
@@ -1568,17 +1570,18 @@ function update() {
 
   // ✅ INSERT THIS FIRST
   if (isLaserHeld) {
+    laserHoldTime++;
     if (!activeLaser) {
-      fireLaser(); // 🔥 Create new laser if none
-    } else {
-      // Gradually increase laser width up to 8
-      if (activeLaser.width < 8) {
-        activeLaser.width += 0.2; // smooth grow
-      }
+      fireLaser();
+    }
+    if (activeLaser) {
+      activeLaser.width = Math.min(1 + laserHoldTime * 0.2, 8); 
     }
   } else {
-    activeLaser = null; // ❌ stop laser when L is released
-  }
+    activeLaser = null;
+    laserHoldTime = 0;
+  }  
+  
 
   if (activeLaser) {
     const LASER_OFFSET = ship.radius; // 🛠️ You can tweak this number later (maybe 20 or 25)
