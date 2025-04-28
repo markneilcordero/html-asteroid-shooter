@@ -946,21 +946,34 @@ function drawHealthBar() {
   const healthRatio = Math.max(ship.health, 0) / 100;
 
   ctx.fillStyle = "gray";
-  ctx.fillRect(20, 20, barWidth, barHeight);
+  ctx.fillRect(20, 20, barWidth, barHeight); // Health bar background
 
   ctx.fillStyle = healthRatio > 0.3 ? "limegreen" : "red";
-  ctx.fillRect(20, 20, barWidth * healthRatio, barHeight);
+  ctx.fillRect(20, 20, barWidth * healthRatio, barHeight); // Health bar filled
 
   ctx.strokeStyle = "white";
-  ctx.strokeRect(20, 20, barWidth, barHeight);
+  ctx.strokeRect(20, 20, barWidth, barHeight); // Health bar border
+
+  // 🛡️ Move shield bar right below the health bar dynamically
+  const shieldBarContainer = document.getElementById("shieldBarContainer");
+  shieldBarContainer.style.top = (20 + barHeight + 10) + "px"; 
 }
+
 
 // === [Draw Score on Screen] ===
 function drawScore() {
+  const shieldBarTop = 20 + 20 + 10; // Health bar top (20px) + height (20px) + gap (10px)
+  const shieldBarHeight = 20;
+  const gapAfterShield = 10;
+
+  const scoreY = shieldBarTop + shieldBarHeight + gapAfterShield;
+
   ctx.fillStyle = "white";
   ctx.font = "18px Arial";
-  ctx.fillText("Score: " + score, 20, 60);
+  ctx.textAlign = "left";
+  ctx.fillText("Score: " + score, 20, 100);
 }
+
 
 // === [New Function: Draw Enemy Indicators] ===
 function drawEnemyIndicators() {
