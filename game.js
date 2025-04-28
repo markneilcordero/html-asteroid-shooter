@@ -390,7 +390,6 @@ let joystickCenter = { x: 60, y: 60 }; // Center inside container (120px)
 let joystickCurrent = { x: 60, y: 60 };
 
 // === [Laser Button Click Handler] ===
-const laserBtn = document.getElementById("laserBtn");
 if (laserBtn) {
   laserBtn.addEventListener("touchstart", () => {
     isLaserHeld = true;
