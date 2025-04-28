@@ -112,7 +112,7 @@ const ship = {
 let score = 0;
 
 // === [Bullet Settings] ===
-const BULLET_SPEED = 10;
+const BULLET_SPEED = 8;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 30; // frames between shots
 const AUTOPILOT_FIRE_COOLDOWN = 30; // frames between shots when autopilot is ON (adjustable)
@@ -138,7 +138,7 @@ let asteroids = [];
 // === [Alien Settings] ===
 const ALIEN_RADIUS = 25;
 // const ALIEN_SPEED = 1.2; // Now defined by alienBaseSpeed
-const ALIEN_BULLET_SPEED = 10;
+const ALIEN_BULLET_SPEED = 8;
 // const ALIEN_FIRE_DELAY = 100; // Now defined by alienBaseFireDelay
 
 let aliens = [];
@@ -147,7 +147,7 @@ let alienBullets = [];
 // === [Opponent Settings] ===
 const OPPONENT_RADIUS = 25;
 const OPPONENT_SPEED = 1.8; // Note: OPPONENT_SPEED is defined but not used in the provided updateOpponent logic
-const OPPONENT_BULLET_SPEED = 10; // Increased speed
+const OPPONENT_BULLET_SPEED = 8; // Increased speed
 const OPPONENT_FIRE_DELAY = 60; // frames between shots
 
 let opponent = {
