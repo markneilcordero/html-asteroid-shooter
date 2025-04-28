@@ -322,9 +322,9 @@ function randomRange(min, max) {
 
 // Controls
 const TURN_SPEED = Math.PI / 90; // radians per frame
-const THRUST_ACCEL = 0.1;
+const THRUST_ACCEL = 0.2;
 const FRICTION = 0.99;
-const MAX_SPEED = 10;
+const MAX_SPEED = 7;
 
 // Input Handlers
 let isSpacebarHeld = false; // ✅ Track if spacebar is held down
