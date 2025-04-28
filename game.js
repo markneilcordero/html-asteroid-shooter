@@ -112,7 +112,7 @@ const ship = {
 let score = 0;
 
 // === [Bullet Settings] ===
-const BULLET_SPEED = 10;
+const BULLET_SPEED = 20;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 30; // frames between shots
 const AUTOPILOT_FIRE_COOLDOWN = 30; // frames between shots when autopilot is ON (adjustable)
@@ -322,9 +322,9 @@ function randomRange(min, max) {
 
 // Controls
 const TURN_SPEED = Math.PI / 90; // radians per frame
-const THRUST_ACCEL = 0.5;
+const THRUST_ACCEL = 0.9;
 const FRICTION = 0.99;
-const MAX_SPEED = 6;
+const MAX_SPEED = 10;
 
 // Input Handlers
 let isSpacebarHeld = false; // ✅ Track if spacebar is held down
