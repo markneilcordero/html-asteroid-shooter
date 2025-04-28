@@ -115,7 +115,7 @@ let score = 0;
 const BULLET_SPEED = 8;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
-const AUTOPILOT_FIRE_COOLDOWN = 30; // frames between shots when autopilot is ON (adjustable)
+const AUTOPILOT_FIRE_COOLDOWN = 20; // frames between shots when autopilot is ON (adjustable)
 
 // === [Bullet / Laser Lifespans] ===
 const PLAYER_BULLET_LIFE = 800;
@@ -1104,6 +1104,22 @@ function updateAlienBullets() {
       }
       continue;
     }
+    // === Check if alien bullet hits asteroid ===
+    for (let j = asteroids.length - 1; j >= 0; j--) {
+      const a = asteroids[j];
+      const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+      if (d < a.radius) {
+        createExplosion(a.x, a.y, a.radius * 2);
+        alienBullets.splice(i, 1); // Remove alien bullet
+        asteroids.splice(j, 1); // Remove asteroid
+  
+        // Optional: Award points or floating text
+        score += 50; 
+        createFloatingText('+50 Asteroid Destroyed!', a.x, a.y, 'lightgray', 16);
+  
+        break; // Done with this bullet
+      }
+    }
   }
 }
 
@@ -1321,6 +1337,11 @@ function update() {
 
   // === [Check if all enemies are defeated] ===
   checkForNewWave();
+
+  // 🚀 Check if asteroids are gone
+  if (asteroids.length === 0) {
+    generateAsteroids();
+  }
 
   requestAnimationFrame(update);
 }
@@ -1628,6 +1649,19 @@ function updateAliens() {
       }
     }
 
+    // === Alien Avoidance with Asteroids ===
+    for (let k = 0; k < asteroids.length; k++) {
+      const asteroid = asteroids[k];
+      const dx = a.x - asteroid.x;
+      const dy = a.y - asteroid.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < a.radius + asteroid.radius + 50) { // 🚨 Buffer distance
+        a.x += (dx / dist) * 2; // Push away from asteroid
+        a.y += (dy / dist) * 2;
+      }
+    }
+
     // === [Alien Avoidance with Opponent] ===
     if (opponent.health > 0) { // Only avoid if opponent is alive
       const dxOp = a.x - opponent.x;
@@ -1653,6 +1687,31 @@ function updateAliens() {
     }
     // === [End Alien Avoidance] ===
 
+
+    // === [Alien Shooting Asteroids if Nearby] ===
+    let nearestAsteroid = null;
+    let minAsteroidDist = Infinity;
+
+    for (let aIdx = 0; aIdx < asteroids.length; aIdx++) {
+      const asteroid = asteroids[aIdx];
+      const dx = asteroid.x - a.x;
+      const dy = asteroid.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < minAsteroidDist && dist < 300) { // 300px range
+        minAsteroidDist = dist;
+        nearestAsteroid = asteroid;
+      }
+    }
+
+    if (nearestAsteroid) {
+      const angleToAsteroid = Math.atan2(nearestAsteroid.y - a.y, nearestAsteroid.x - a.x);
+      a.angle = angleToAsteroid; // Turn toward asteroid
+        if (a.fireCooldown <= 0) {
+          alienShoot(a); // 🔥 Fire at asteroid!
+          a.fireCooldown = alienBaseFireDelay; // Reset cooldown
+        }
+    }
 
     // Fire bullets
     a.fireCooldown--;
@@ -1758,6 +1817,31 @@ function updateOpponent() {
       }
   }
 
+  // === [Opponent Shooting Asteroids if Nearby] ===
+  let nearestAsteroid = null;
+  let minAsteroidDist = Infinity;
+
+  for (let aIdx = 0; aIdx < asteroids.length; aIdx++) {
+    const asteroid = asteroids[aIdx];
+    const dx = asteroid.x - opponent.x;
+    const dy = asteroid.y - opponent.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < minAsteroidDist && dist < 300) { // 300px range
+      minAsteroidDist = dist;
+      nearestAsteroid = asteroid;
+    }
+  }
+
+  if (nearestAsteroid) {
+    const angleToAsteroid = Math.atan2(nearestAsteroid.y - opponent.y, nearestAsteroid.x - opponent.x);
+    opponent.angle = angleToAsteroid;
+    if (opponent.fireCooldown <= 0) {
+      opponentShoot();
+      opponent.fireCooldown = OPPONENT_FIRE_DELAY;
+    }
+  }
+
   // 3. Fire at player
   const dxFire = ship.x - opponent.x;
   const dyFire = ship.y - opponent.y;
@@ -1818,6 +1902,19 @@ function updateOpponent() {
 
       ctx.restore();
   }
+
+  // === Opponent Avoidance with Asteroids ===
+  for (let k = 0; k < asteroids.length; k++) {
+    const asteroid = asteroids[k];
+    const dx = opponent.x - asteroid.x;
+    const dy = opponent.y - asteroid.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < opponent.radius + asteroid.radius + 50) {
+      opponent.thrust.x += (dx / dist) * 0.2;
+      opponent.thrust.y += (dy / dist) * 0.2;
+    }
+  }
 }
 
 // === [Update and Draw Opponent Bullets] ===
@@ -1859,6 +1956,22 @@ function updateOpponentBullets() {
         respawnShip();
       }
       continue;
+    }
+    // === Check if opponent bullet hits asteroid ===
+    for (let j = asteroids.length - 1; j >= 0; j--) {
+      const a = asteroids[j];
+      const d = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+      if (d < a.radius) {
+        createExplosion(a.x, a.y, a.radius * 2);
+        opponentBullets.splice(i, 1); // Remove opponent bullet
+        asteroids.splice(j, 1); // Remove asteroid
+  
+        // Optional: Award points or floating text
+        score += 50;
+        createFloatingText('+50 Asteroid Destroyed!', a.x, a.y, 'lightgray', 16);
+  
+        break; // Done with this bullet
+      }
     }
   }
 }
