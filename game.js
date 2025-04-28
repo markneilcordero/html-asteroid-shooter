@@ -717,6 +717,7 @@ function drawStars() {
 }
 
 // === [Shoot Bullet] ===
+let muzzleFlashes = []; // ✅ Array to store muzzle flash effects
 function shootBullet() {
   bullets.push({
     x: ship.x + Math.cos(ship.angle) * ship.radius, // Start from ship's nose
@@ -725,6 +726,17 @@ function shootBullet() {
     dy: Math.sin(ship.angle) * BULLET_SPEED,
     life: PLAYER_BULLET_LIFE // Use the new constant
   });
+
+  const muzzleOffset = ship.radius + 5; // move flash 10px in front of ship nose
+
+  // 🔥 Create muzzle flash
+  muzzleFlashes.push({
+    x: ship.x + Math.cos(ship.angle) * muzzleOffset,
+    y: ship.y + Math.sin(ship.angle) * muzzleOffset,
+    angle: ship.angle,
+    life: 5 // lasts only 5 frames
+  });
+
   shootSound.currentTime = 0; // Rewind sound to start
   shootSound.play(); // Play shooting sound
 }
@@ -1272,6 +1284,32 @@ function update() {
   if (isSpacebarHeld && bulletCooldown <= 0) {
     shootBullet();
     bulletCooldown = BULLET_COOLDOWN;
+  }
+
+  // === [Update and Draw Muzzle Flashes] ===
+  for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
+    const flash = muzzleFlashes[i];
+    const sx = flash.x - camera.x;
+    const sy = flash.y - camera.y;
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(flash.angle + Math.PI / 2); // ✅ Add + Math.PI/2 to fix direction!
+
+    // Draw a small yellow flash (triangle shape)
+    ctx.fillStyle = 'yellow';
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(-3, 5);
+    ctx.lineTo(3, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    flash.life--;
+    if (flash.life <= 0) {
+      muzzleFlashes.splice(i, 1); // Remove flash after its life ends
+    }
   }
 
 
