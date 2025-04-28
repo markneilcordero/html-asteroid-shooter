@@ -112,7 +112,7 @@ const ship = {
 let score = 0;
 
 // === [Bullet Settings] ===
-const BULLET_SPEED = 8;
+const BULLET_SPEED = 10;
 // const BULLET_LIFE = 100; // frames // Remove this old constant
 const BULLET_COOLDOWN = 10; // frames between shots
 const AUTOPILOT_FIRE_COOLDOWN = 10; // frames between shots when autopilot is ON (adjustable)
@@ -138,7 +138,7 @@ let asteroids = [];
 // === [Alien Settings] ===
 const ALIEN_RADIUS = 25;
 // const ALIEN_SPEED = 1.2; // Now defined by alienBaseSpeed
-const ALIEN_BULLET_SPEED = 8;
+const ALIEN_BULLET_SPEED = 10;
 // const ALIEN_FIRE_DELAY = 100; // Now defined by alienBaseFireDelay
 
 let aliens = [];
@@ -147,7 +147,7 @@ let alienBullets = [];
 // === [Opponent Settings] ===
 const OPPONENT_RADIUS = 25;
 const OPPONENT_SPEED = 1.8; // Note: OPPONENT_SPEED is defined but not used in the provided updateOpponent logic
-const OPPONENT_BULLET_SPEED = 8; // Increased speed
+const OPPONENT_BULLET_SPEED = 10; // Increased speed
 const OPPONENT_FIRE_DELAY = 60; // frames between shots
 
 let opponent = {
@@ -719,26 +719,43 @@ function drawStars() {
 // === [Shoot Bullet] ===
 let muzzleFlashes = []; // ✅ Array to store muzzle flash effects
 function shootBullet() {
-  bullets.push({
-    x: ship.x + Math.cos(ship.angle) * ship.radius, // Start from ship's nose
-    y: ship.y + Math.sin(ship.angle) * ship.radius, // Start from ship's nose
-    dx: Math.cos(ship.angle) * BULLET_SPEED,
-    dy: Math.sin(ship.angle) * BULLET_SPEED,
-    life: PLAYER_BULLET_LIFE // Use the new constant
-  });
+  const spread = Math.PI / 32; // Small angle spread (optional, can be 0 for parallel)
+  const offsetDistance = 18;   // How far left/right from center
+  const retreatDistance = 10;  // How much to retreat the side bullets (adjust as needed)
 
-  const muzzleOffset = ship.radius + 5; // move flash 10px in front of ship nose
+  // Calculate perpendicular vector to ship's angle
+  const perpX = Math.cos(ship.angle + Math.PI / 2);
+  const perpY = Math.sin(ship.angle + Math.PI / 2);
 
-  // 🔥 Create muzzle flash
-  muzzleFlashes.push({
-    x: ship.x + Math.cos(ship.angle) * muzzleOffset,
-    y: ship.y + Math.sin(ship.angle) * muzzleOffset,
-    angle: ship.angle,
-    life: 5 // lasts only 5 frames
-  });
+  // Three bullet positions: left, center, right
+  const bulletConfigs = [
+    // Retreat left and right bullets by retreatDistance
+    { angle: ship.angle, offset: -offsetDistance, retreat: retreatDistance }, // Left
+    { angle: ship.angle, offset: 0, retreat: 0 },                            // Center
+    { angle: ship.angle, offset: offsetDistance, retreat: retreatDistance }   // Right
+  ];
 
-  shootSound.currentTime = 0; // Rewind sound to start
-  shootSound.play(); // Play shooting sound
+  for (const config of bulletConfigs) {
+    bullets.push({
+      x: ship.x + Math.cos(config.angle) * (ship.radius - config.retreat) + perpX * config.offset,
+      y: ship.y + Math.sin(config.angle) * (ship.radius - config.retreat) + perpY * config.offset,
+      dx: Math.cos(config.angle) * BULLET_SPEED,
+      dy: Math.sin(config.angle) * BULLET_SPEED,
+      life: PLAYER_BULLET_LIFE
+    });
+
+    // Optional: Muzzle flash for each bullet
+    const muzzleOffset = ship.radius + 5 - config.retreat;
+    muzzleFlashes.push({
+      x: ship.x + Math.cos(config.angle) * muzzleOffset + perpX * config.offset,
+      y: ship.y + Math.sin(config.angle) * muzzleOffset + perpY * config.offset,
+      angle: config.angle,
+      life: 5
+    });
+  }
+
+  shootSound.currentTime = 0;
+  shootSound.play();
 }
 
 // === [Respawn Ship] ===
