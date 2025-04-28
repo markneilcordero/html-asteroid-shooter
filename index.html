@@ -92,6 +92,32 @@
         transform: scale(0.95); /* Press down effect */
       }
 
+      #laserBtn {
+        position: absolute;
+        bottom: 40px;
+        right: 140px; /* Place it to the left of FIRE button */
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #00e0ff;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+        border: none;
+        box-shadow: 0 0 15px rgba(0, 224, 255, 0.6);
+        cursor: pointer;
+        z-index: 10;
+        opacity: 0.9;
+        transition: transform 0.1s, opacity 0.1s;
+      }
+      #laserBtn:hover {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+      #laserBtn:active {
+        transform: scale(0.95);
+      }
+
       /* 📱 Responsive Mobile Adjustments */
       @media (max-width: 768px) {
         #joystickContainer {
@@ -109,6 +135,13 @@
           height: 70px;
           bottom: 100px;
           right: 20px;
+          font-size: 20px;
+        }
+        #laserBtn {
+          width: 70px;
+          height: 70px;
+          bottom: 100px;
+          right: 100px; /* Adjust for mobile */
           font-size: 20px;
         }
         .top-buttons {
@@ -141,24 +174,27 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <div id="desktopControls" style="
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 10px 20px;
-  font-size: 18px;
-  border-radius: 10px;
-  backdrop-filter: blur(5px);
-  z-index: 20;
-  display: none; /* Hidden by default */
-  font-family: Arial, sans-serif;
-">
-  🖥️ Controls: Move with <strong>Arrow Keys</strong> | Shoot with <strong>Spacebar</strong>
-</div>
-
+    <div
+      id="desktopControls"
+      style="
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 10px 20px;
+        font-size: 18px;
+        border-radius: 10px;
+        backdrop-filter: blur(5px);
+        z-index: 20;
+        display: none; /* Hidden by default */
+        font-family: Arial, sans-serif;
+      "
+    >
+      🖥️ Controls: Move with <strong>Arrow Keys</strong> | Shoot with
+      <strong>Spacebar</strong>
+    </div>
 
     <div id="joystickContainer">
       <div id="joystick"></div>
@@ -170,11 +206,27 @@
     </div>
 
     <button id="shootBtn">FIRE</button>
+    <button id="laserBtn">LASER</button>
 
     <script src="game.js"></script>
     <script>
       let shootInterval = null;
+      let laserInterval = null; // 🔥 Add for Laser
       const shootBtn = document.getElementById("shootBtn");
+      const laserBtn = document.getElementById("laserBtn");
+
+      laserBtn.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        startLaserFire();
+      });
+      laserBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        startLaserFire();
+      });
+      laserBtn.addEventListener("mouseup", stopLaserFire);
+      laserBtn.addEventListener("mouseleave", stopLaserFire);
+      laserBtn.addEventListener("touchend", stopLaserFire);
+      laserBtn.addEventListener("touchcancel", stopLaserFire);
 
       // Start Rapid Fire on mousedown or touchstart
       function startRapidFire() {
@@ -197,6 +249,23 @@
         }
       }
 
+      // === [Start Rapid Fire for LASER] ===
+      function startLaserFire() {
+        if (!laserInterval) {
+          fireLaser(); // Immediate first laser
+          laserInterval = setInterval(() => {
+            fireLaser();
+          }, 50); // 🔥 adjust laser fire rate if needed (slower or faster)
+        }
+      }
+
+      function stopLaserFire() {
+        if (laserInterval) {
+          clearInterval(laserInterval);
+          laserInterval = null;
+        }
+      }
+
       // 📌 Bind correct events
       shootBtn.addEventListener("mousedown", (e) => {
         e.preventDefault();
@@ -211,6 +280,20 @@
       shootBtn.addEventListener("touchend", stopRapidFire);
       shootBtn.addEventListener("touchcancel", stopRapidFire);
 
+      // === [Bind Events for laserBtn] ===
+      laserBtn.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        startLaserFire();
+      });
+      laserBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        startLaserFire();
+      });
+      laserBtn.addEventListener("mouseup", stopLaserFire);
+      laserBtn.addEventListener("mouseleave", stopLaserFire);
+      laserBtn.addEventListener("touchend", stopLaserFire);
+      laserBtn.addEventListener("touchcancel", stopLaserFire);
+
       // 🔊 Handle Enable Sound Button
       const enableSoundBtn = document.getElementById("enableSoundBtn");
       enableSoundBtn.addEventListener("click", () => {
@@ -222,18 +305,21 @@
     </script>
     <script>
       // 📱 Simple mobile detection
-      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+      const isMobile =
+        /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+
       if (!isMobile) {
         // 🖥️ Desktop mode
-        document.getElementById('joystickContainer').style.display = 'none';
-        document.getElementById('shootBtn').style.display = 'none';
-        document.getElementById('desktopControls').style.display = 'block';
+        document.getElementById("joystickContainer").style.display = "none";
+        document.getElementById("shootBtn").style.display = "none";
+        document.getElementById("laserBtn").style.display = "none"; // ⬅️ ADD THIS LINE
+        document.getElementById("desktopControls").style.display = "block";
       } else {
         // 📱 Mobile mode
-        document.getElementById('desktopControls').style.display = 'none';
+        document.getElementById("desktopControls").style.display = "none";
       }
     </script>
-    
   </body>
 </html>

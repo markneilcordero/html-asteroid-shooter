@@ -343,6 +343,9 @@ document.addEventListener('keydown', (e) => {
     case ' ': // Spacebar
       isSpacebarHeld = true; // ✅ Start shooting
       break;
+    case 'l': // Press 'L' key to fire LASER
+      fireLaser(); // ✅ Fire the big laser beam!
+      break;
   }
 });
 
@@ -357,6 +360,9 @@ document.addEventListener('keyup', (e) => {
       break;
     case ' ': // Spacebar
       isSpacebarHeld = false; // ✅ Stop shooting
+      break;
+    case 'l':
+      activeLaser = null; // 🛑 Immediately stop the laser
       break;
   }
 });
@@ -717,6 +723,36 @@ function drawStars() {
   }
 }
 
+// === ✅ [Laser Collision Helper] ===
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  if (lenSq !== 0) param = dot / lenSq;
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  const dx = px - xx;
+  const dy = py - yy;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 // === [Shoot Bullet] ===
 let muzzleFlashes = []; // ✅ Array to store muzzle flash effects
 function shootBullet() {
@@ -758,6 +794,23 @@ function shootBullet() {
   shootSound.currentTime = 0;
   shootSound.play();
 }
+
+let activeLaser = null;
+function fireLaser() {
+  activeLaser = {
+    x: ship.x,
+    y: ship.y,
+    angle: ship.angle,
+    length: 2000, // 🛠️ How long you want your laser
+    width: 8,     // 🛠️ How thick you want your laser
+    life: 30,     // 🛠️ How many frames laser stays (can be infinite if you want)
+  };
+
+  shootSound.currentTime = 0;
+  shootSound.play();
+}
+
+
 
 // === [Respawn Ship] ===
 function respawnShip() {
@@ -1320,6 +1373,83 @@ function update() {
     bulletCooldown = BULLET_COOLDOWN;
   }
 
+  if (activeLaser) {
+    const laserX = ship.x;
+    const laserY = ship.y;
+    const laserAngle = ship.angle;
+    const laserLength = activeLaser.length;
+  
+    const laserEndX = laserX + Math.cos(laserAngle) * laserLength;
+    const laserEndY = laserY + Math.sin(laserAngle) * laserLength;
+
+    // 🛠️ Draw the visible laser
+    ctx.save();
+    ctx.strokeStyle = 'cyan'; // Laser color
+    ctx.lineWidth = activeLaser.width || 6; // Laser width (default 6 if not set)
+    ctx.beginPath();
+    ctx.moveTo(laserX - camera.x, laserY - camera.y); // Adjust for camera
+    ctx.lineTo(laserEndX - camera.x, laserEndY - camera.y);
+    ctx.stroke();
+    ctx.restore();
+  
+    // === Hit Aliens ===
+    for (let i = aliens.length - 1; i >= 0; i--) {
+      const alien = aliens[i];
+      if (pointToLineDistance(alien.x, alien.y, laserX, laserY, laserEndX, laserEndY) < alien.radius) {
+        createExplosion(alien.x, alien.y, alien.radius * 2);
+        aliens.splice(i, 1);
+        score += 300;
+        createFloatingText('+300 Alien Destroyed!', alien.x, alien.y, 'red', 18);
+      }
+    }
+  
+    // === Hit Opponent ===
+    if (opponent.health > 0) {
+      if (pointToLineDistance(opponent.x, opponent.y, laserX, laserY, laserEndX, laserEndY) < opponent.radius) {
+        opponent.health -= 2; // Laser slowly burns opponent
+        createFloatingText('Laser Hit!', opponent.x, opponent.y - 20, 'orange', 14);
+  
+        if (opponent.health <= 0) {
+          createExplosion(opponent.x, opponent.y, opponent.radius * 2);
+          score += 500;
+          createFloatingText('+500 Opponent Defeated!', opponent.x, opponent.y, 'yellow', 20);
+        }
+      }
+    }
+  
+    // === Hit Asteroids ===
+    for (let i = asteroids.length - 1; i >= 0; i--) {
+      const asteroid = asteroids[i];
+      if (pointToLineDistance(asteroid.x, asteroid.y, laserX, laserY, laserEndX, laserEndY) < asteroid.radius) {
+        createExplosion(asteroid.x, asteroid.y, asteroid.radius * 2);
+        score += 100;
+        asteroids.splice(i, 1);
+      }
+    }
+  
+    // === Hit UFOs ===
+    for (let i = ufos.length - 1; i >= 0; i--) {
+      const ufo = ufos[i];
+      if (pointToLineDistance(ufo.x, ufo.y, laserX, laserY, laserEndX, laserEndY) < ufo.radius) {
+        createExplosion(ufo.x, ufo.y, ufo.radius * 2);
+        ufos.splice(i, 1);
+        score += 400;
+        createFloatingText('+400 UFO Destroyed!', ufo.x, ufo.y, 'cyan', 18);
+      }
+    }
+  
+    // === Hit Civilians (Optional) ===
+    for (let i = civilians.length - 1; i >= 0; i--) {
+      const civ = civilians[i];
+      if (pointToLineDistance(civ.x, civ.y, laserX, laserY, laserEndX, laserEndY) < civ.radius) {
+        createExplosion(civ.x, civ.y, civ.radius * 2);
+        civilians.splice(i, 1);
+        score -= 100; // Punishment for killing civilians
+        createFloatingText('-100 Civilian Lost!', civ.x, civ.y, 'blue', 16);
+      }
+    }
+  }  
+
   // === [Update and Draw Muzzle Flashes] ===
   for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
     const flash = muzzleFlashes[i];
@@ -1386,13 +1516,16 @@ function updateBullets() {
     const sx = b.x - camera.x;
     const sy = b.y - camera.y;
     if (sx > -5 && sx < camera.w + 5 && sy > -5 && sy < camera.h + 5) { // Culling check
-        const bulletSize = 20; // Match size used in drawObjectGallery
-        const bulletHeight = 16; // Match height used in drawObjectGallery
-        ctx.save();
-        ctx.translate(sx, sy);
-        ctx.rotate(Math.atan2(b.dy, b.dx)); // Rotate bullet image
-        ctx.drawImage(playerBulletImg, -bulletSize / 2, -bulletHeight / 2, bulletSize, bulletHeight);
-        ctx.restore();
+      const isLaser = b.type === 'laser'; // 🆕 Check if it's a laser bullet
+      const bulletSize = isLaser ? 8 : 20; // 🆕 Laser: thinner
+      const bulletHeight = isLaser ? 60 : 16; // 🆕 Laser: longer
+      
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(b.dy, b.dx));
+      ctx.drawImage(playerBulletImg, -bulletSize / 2, -bulletHeight / 2, bulletSize, bulletHeight);
+      ctx.restore();
+      
     }
 
 
