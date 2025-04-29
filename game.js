@@ -241,6 +241,18 @@ function updateFloatingTexts() {
   }
 }
 
+function showShieldWarning() {
+  createFloatingText(
+    "⚡ SHIELD MODE", // Text
+    ship.x, // X (ship position)
+    ship.y - 50, // Y (slightly above the ship)
+    "cyan", // Color
+    18, // Size
+    true, // Bold
+    true // Centered
+  );
+}
+
 function createExplosion(x, y, size = 40) {
   explosions.push({
     x,
@@ -574,6 +586,12 @@ document.getElementById("autopilotBtn").addEventListener("click", () => {
   if (laserBtn) {
     laserBtn.style.display = autopilot ? "none" : "block";
   }
+
+  // Hide or show shield button
+  const shieldBtn = document.getElementById("shieldBtn");
+  if (shieldBtn) {
+    shieldBtn.style.display = autopilot ? "none" : "block";
+  }
 });
 
 // === [Restart Button] ===
@@ -598,7 +616,7 @@ function restartGame() {
   ship.y = WORLD_HEIGHT / 2;
   ship.thrust = { x: 0, y: 0 };
   ship.angle = 0;
-  ship.health = 50000;
+  ship.health = 100;
 
   shieldEnergy = 100;
 
@@ -639,6 +657,7 @@ function restartGame() {
 }
 
 // === [Smart Autopilot Logic] ===
+let autopilotSpin = false;
 function smartAutopilot() {
   const DODGE_RADIUS = 150; // Dodge earlier (was 100)
   const DODGE_FORCE = 0.2; // Dodge harder
@@ -726,30 +745,75 @@ function smartAutopilot() {
       );
       ship.angle += normalizedAngleDiff * 0.15;
 
+      // === Spin Attack Mode Activation ===
+      let nearbyEnemies = 0;
+      let dangerBullets = 0;
+
+      // Count how many aliens are nearby
+      for (const alien of aliens) {
+        const d = Math.hypot(alien.x - ship.x, alien.y - ship.y);
+        if (d < 400) {
+          // 400px detection range
+          nearbyEnemies++;
+        }
+      }
+
+      // Also count opponent if alive
+      if (opponent.health > 0) {
+        const d = Math.hypot(opponent.x - ship.x, opponent.y - ship.y);
+        if (d < 400) {
+          nearbyEnemies++;
+        }
+      }
+
+      // Count incoming bullets (alien bullets + opponent bullets)
+      const incomingBullets = [...alienBullets, ...opponentBullets];
+      for (const bullet of incomingBullets) {
+        const d = Math.hypot(bullet.x - ship.x, bullet.y - ship.y);
+        if (d < 300) {
+          // smaller radius for bullets
+          dangerBullets++;
+        }
+      }
+
+      // 🛡️ Only spin if multiple enemies around and firing laser
+      if (nearbyEnemies >= 2 && !shieldActive) {
+        isLaserHeld = true; // ✅ Start charging laser!
+        autopilotSpin = true; // ✅ Enable spin attack!
+      } else {
+        isLaserHeld = false; // ❌ No laser
+        autopilotSpin = false; // ❌ No spin
+      }
+
       // Adjust movement dynamically
-      if (minDist > 400) {
-        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 1.2;
+      if (minDist > 500) {
+        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 2.0; // 🚀 Full speed if far
+        ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 2.0;
+      } else if (minDist > 200) {
+        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 1.2; // 🚀 Medium speed
         ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 1.2;
-      } else if (minDist > 150) {
-        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.8;
-        ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.8;
-      } else if (minDist < 100) {
-        ship.thrust.x -= Math.cos(ship.angle) * THRUST_ACCEL * 0.6;
-        ship.thrust.y -= Math.sin(ship.angle) * THRUST_ACCEL * 0.6;
+      } else {
+        ship.thrust.x += Math.cos(ship.angle) * THRUST_ACCEL * 0.5; // 🛑 Careful when very close
+        ship.thrust.y += Math.sin(ship.angle) * THRUST_ACCEL * 0.5;
       }
 
       // === 🆕 Shooting logic with Laser
       const angleError = Math.abs(normalizedAngleDiff);
-      if (angleError < Math.PI / 5) {
-        if (bulletCooldown <= 0) {
-          shootBullet();
-          bulletCooldown = AUTOPILOT_FIRE_COOLDOWN;
-        }
+      if (angleError < Math.PI / 3) {
+        if (!shieldActive) {
+          // ✅ Only fire if shield is OFF
+          if (bulletCooldown <= 0) {
+            shootBullet();
+            bulletCooldown = AUTOPILOT_FIRE_COOLDOWN;
+          }
 
-        // 🛠️ Laser attack when very close
-        if (minDist < 300) {
-          isLaserHeld = true;
+          if (minDist < 600) {
+            isLaserHeld = true;
+          } else {
+            isLaserHeld = false;
+          }
         } else {
+          // Shield is ON, don't fire!
           isLaserHeld = false;
         }
       } else {
@@ -766,6 +830,56 @@ function smartAutopilot() {
     ship.thrust.x *= FRICTION;
     ship.thrust.y *= FRICTION;
     isLaserHeld = false; // Stop laser while dodging
+  }
+
+  // === [Auto Shield Management] ===
+  if (shieldEnergy > 0) {
+    let dangerNearby = false;
+
+    // Check for nearby alien bullets
+    for (const bullet of alienBullets) {
+      const dx = ship.x - bullet.x;
+      const dy = ship.y - bullet.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 200) {
+        // 200 pixels radius (you can adjust this)
+        dangerNearby = true;
+        break;
+      }
+    }
+
+    // Check for nearby opponent bullets
+    if (!dangerNearby) {
+      for (const bullet of opponentBullets) {
+        const dx = ship.x - bullet.x;
+        const dy = ship.y - bullet.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 200) {
+          dangerNearby = true;
+          break;
+        }
+      }
+    }
+
+    // Check for nearby asteroids
+    if (!dangerNearby) {
+      for (const asteroid of asteroids) {
+        const dx = ship.x - asteroid.x;
+        const dy = ship.y - asteroid.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < asteroid.radius + 150) {
+          dangerNearby = true;
+          break;
+        }
+      }
+    }
+
+    // === Final Decision ===
+    if (dangerNearby) {
+      shieldActive = true;
+    } else {
+      shieldActive = false;
+    }
   }
 }
 
@@ -920,7 +1034,7 @@ function fireLaser() {
       x: ship.x,
       y: ship.y,
       angle: ship.angle,
-      length: 500,
+      length: 2000,
       width: 1, // start small
       life: 30,
     };
@@ -956,9 +1070,8 @@ function drawHealthBar() {
 
   // 🛡️ Move shield bar right below the health bar dynamically
   const shieldBarContainer = document.getElementById("shieldBarContainer");
-  shieldBarContainer.style.top = (20 + barHeight + 10) + "px"; 
+  shieldBarContainer.style.top = 20 + barHeight + 10 + "px";
 }
-
 
 // === [Draw Score on Screen] ===
 function drawScore() {
@@ -973,7 +1086,6 @@ function drawScore() {
   ctx.textAlign = "left";
   ctx.fillText("Score: " + score, 20, 100);
 }
-
 
 // === [New Function: Draw Enemy Indicators] ===
 function drawEnemyIndicators() {
@@ -1387,7 +1499,7 @@ function updateAlienBullets() {
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
       if (shieldActive && shieldEnergy > 0) {
-        shieldEnergy -= 10; // Shield absorbs bullet
+        shieldEnergy -= 10;
         createFloatingText(
           "🛡️ Shield Blocked!",
           ship.x,
@@ -1395,6 +1507,7 @@ function updateAlienBullets() {
           "cyan",
           20
         );
+        createExplosion(ship.x, ship.y, 40); // 🚀 Add small explosion
       } else {
         ship.health -= 15; // Only take health damage if shield inactive
         createExplosion(ship.x, ship.y, 40);
@@ -1542,6 +1655,9 @@ function update() {
   // Autopilot logic
   if (autopilot) {
     smartAutopilot(); // Autopilot controls rotation and thrust
+    if (autopilotSpin) {
+      ship.angle += 0.2; // 🚀 Spin speed (adjustable)
+    }
   } else {
     // Manual control + passive dodge
     ship.angle += ship.rotation; // Apply manual rotation
@@ -1641,18 +1757,29 @@ function update() {
 
   // ✅ Add this inside your update() loop:
   if (isSpacebarHeld && bulletCooldown <= 0) {
-    shootBullet();
-    bulletCooldown = BULLET_COOLDOWN;
+    if (!shieldActive) {
+      shootBullet();
+      bulletCooldown = BULLET_COOLDOWN;
+    } else {
+      showShieldWarning(); // 🚀 Show warning if shield blocks bullet!
+    }
   }
 
   // ✅ INSERT THIS FIRST
   if (isLaserHeld) {
-    laserHoldTime++;
-    if (!activeLaser) {
-      fireLaser();
-    }
-    if (activeLaser) {
-      activeLaser.width = Math.min(1 + laserHoldTime * 0.2, 8);
+    if (!shieldActive) {
+      laserHoldTime++;
+      if (!activeLaser) {
+        fireLaser();
+      }
+      if (activeLaser) {
+        activeLaser.width = Math.min(1 + laserHoldTime * 0.2, 8);
+      }
+    } else {
+      // 🚀 Show warning if trying to laser while shield active
+      showShieldWarning();
+      activeLaser = null;
+      laserHoldTime = 0;
     }
   } else {
     activeLaser = null;
@@ -2539,7 +2666,7 @@ function updateOpponentBullets() {
     const dist = Math.sqrt((b.x - ship.x) ** 2 + (b.y - ship.y) ** 2);
     if (dist < ship.radius) {
       if (shieldActive && shieldEnergy > 0) {
-        shieldEnergy -= 10; // Shield absorbs the hit
+        shieldEnergy -= 10;
         createFloatingText(
           "🛡️ Shield Blocked!",
           ship.x,
@@ -2547,6 +2674,7 @@ function updateOpponentBullets() {
           "cyan",
           20
         );
+        createExplosion(ship.x, ship.y, 40); // 🚀 Add small explosion
       } else {
         ship.health -= 10;
         createExplosion(ship.x, ship.y, 40);
