@@ -378,11 +378,18 @@ document.addEventListener("keydown", (e) => {
     case "ArrowUp":
       ship.thrusting = true;
       break;
-    case " ": // Spacebar
+    case "c": 
       isSpacebarHeld = true; // ✅ Start shooting
       break;
-    case "l": // Press 'L' key to fire LASER
+    case "x": // Press 'L' key to fire LASER
       isLaserHeld = true; // ✅ Fire the big laser beam!
+      break;
+    case "z": // Press 'Z' key to toggle shield
+      if (shieldActive) {
+        shieldActive = false;
+      } else if (shieldEnergy > 0) {
+        shieldActive = true;
+      }
       break;
   }
 });
@@ -396,10 +403,10 @@ document.addEventListener("keyup", (e) => {
     case "ArrowUp":
       ship.thrusting = false;
       break;
-    case " ": // Spacebar
+    case "c":
       isSpacebarHeld = false; // ✅ Stop shooting
       break;
-    case "l":
+    case "x":
       isLaserHeld = false;
       break;
   }
