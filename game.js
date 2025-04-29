@@ -904,6 +904,12 @@ function smartAutopilot() {
       } else {
         shieldActive = false;
       }
+
+      // === [Shield Auto Toggle based on Energy] ===
+      if (shieldEnergy <= 0 && shieldActive) {
+        // 🚀 If shieldEnergy is gone, automatically turn off the shield
+        shieldActive = false;
+      }
     }
   }
 }
@@ -1701,6 +1707,11 @@ function update() {
   // Apply thrust (whether from autopilot or manual control)
   ship.x += ship.thrust.x;
   ship.y += ship.thrust.y;
+
+  // === [Health Regeneration] ===
+  if (ship.health > 0 && ship.health < 100) {
+    ship.health = Math.min(ship.health + 0.2, 100); // Regenerate slowly, max 100
+  }
 
   // Check for collisions after moving the ship
   checkShipCollisions();
