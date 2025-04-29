@@ -378,7 +378,7 @@ document.addEventListener("keydown", (e) => {
     case "ArrowUp":
       ship.thrusting = true;
       break;
-    case "c": 
+    case "c":
       isSpacebarHeld = true; // ✅ Start shooting
       break;
     case "x": // Press 'L' key to fire LASER
@@ -840,24 +840,28 @@ function smartAutopilot() {
   }
 
   // === [Auto Shield Management] ===
+  // === [Auto Shield Management - Improved] ===
   if (shieldEnergy > 0) {
     let dangerNearby = false;
 
-    // Check for nearby alien bullets
-    for (const bullet of alienBullets) {
-      const dx = ship.x - bullet.x;
-      const dy = ship.y - bullet.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 200) {
-        // 200 pixels radius (you can adjust this)
-        dangerNearby = true;
-        break;
+    // === [New] Check how many aliens are close
+    let nearbyAliens = 0;
+    for (const alien of aliens) {
+      const d = Math.sqrt((alien.x - ship.x) ** 2 + (alien.y - ship.y) ** 2);
+      if (d < 400) {
+        // 400px detection range
+        nearbyAliens++;
       }
     }
 
-    // Check for nearby opponent bullets
-    if (!dangerNearby) {
-      for (const bullet of opponentBullets) {
+    if (nearbyAliens >= 3) {
+      // ⚡ MANY aliens nearby: Don't activate shield! Attack with laser!
+      shieldActive = false;
+      isLaserHeld = true;
+    } else {
+      // ⚡ Not many aliens: Normal shield logic
+      // Check for alien bullets
+      for (const bullet of alienBullets) {
         const dx = ship.x - bullet.x;
         const dy = ship.y - bullet.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -866,26 +870,40 @@ function smartAutopilot() {
           break;
         }
       }
-    }
 
-    // Check for nearby asteroids
-    if (!dangerNearby) {
-      for (const asteroid of asteroids) {
-        const dx = ship.x - asteroid.x;
-        const dy = ship.y - asteroid.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < asteroid.radius + 150) {
-          dangerNearby = true;
-          break;
+      // Check for opponent bullets
+      if (!dangerNearby) {
+        for (const bullet of opponentBullets) {
+          const dx = ship.x - bullet.x;
+          const dy = ship.y - bullet.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 200) {
+            dangerNearby = true;
+            break;
+          }
         }
       }
-    }
 
-    // === Final Decision ===
-    if (dangerNearby) {
-      shieldActive = true;
-    } else {
-      shieldActive = false;
+      // Check for asteroids
+      if (!dangerNearby) {
+        for (const asteroid of asteroids) {
+          const dx = ship.x - asteroid.x;
+          const dy = ship.y - asteroid.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < asteroid.radius + 150) {
+            dangerNearby = true;
+            break;
+          }
+        }
+      }
+
+      // === Final decision
+      if (dangerNearby) {
+        shieldActive = true;
+        isLaserHeld = false; // Don't laser while defending
+      } else {
+        shieldActive = false;
+      }
     }
   }
 }
